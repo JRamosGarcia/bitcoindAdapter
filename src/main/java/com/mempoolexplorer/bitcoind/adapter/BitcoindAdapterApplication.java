@@ -21,6 +21,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
+//TODO":Meter sonarq cuando tengas mucho tiempo libre.
 @SpringBootApplication
 public class BitcoindAdapterApplication {
 
