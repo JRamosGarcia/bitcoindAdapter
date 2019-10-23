@@ -5,8 +5,11 @@
 
 <module name="Checker">
      <module name="TreeWalker">
-          <module name="JavadocType">
-               <property name="scope" value="public"/>
-          </module>
+<!--           <module name="JavadocType"> -->
+<!--                <property name="scope" value="public"/> -->
+<!--           </module> -->
+          <module name="MethodLength">
+  				<property name="max" value="60"/>
+		 </module>
      </module>
 </module>
