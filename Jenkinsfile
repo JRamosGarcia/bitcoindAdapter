@@ -24,6 +24,7 @@ pipeline{
 					reportFiles:'index.html',
 					reportName: "JaCoCo	Report"
 				])
+				//TODO: No pasamos los test de cobertura.
                 //sh "./gradlew jacocoTestCoverageVerification"
             }
 
