@@ -30,7 +30,7 @@ pipeline{
         }
         stage("Static code analysis"){
 			steps{
-				sh "./gradlew checkstyleMain"
+				sh "./gradlew checkstyleMain --stacktrace"
 				publishHTML	(target:	[
 					reportDir: 'build/reports/checkstyle/',
 					reportFiles: 'main.html',
