@@ -39,14 +39,14 @@ test {
 }
 
 //Si no pasamos del 20% de cobertura esto falla
-//jacocoTestCoverageVerification	{
-//	violationRules	{
-//		rule	{
-//			limit	{
-//				minimum	=	0.2
-//			}
-//		}
-//	}
-//}
+jacocoTestCoverageVerification	{
+	violationRules	{
+		rule	{
+			limit	{
+				minimum	=	0.2
+			}
+		}
+	}
+}
 
 //compileJava.dependsOn(processResources)
