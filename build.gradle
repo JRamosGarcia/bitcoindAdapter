@@ -2,6 +2,7 @@ plugins {
   id 'org.springframework.boot' version '2.2.0.RELEASE'
   id 'io.spring.dependency-management' version '1.0.8.RELEASE'
   id 'java'
+  id 'jacoco'
  }
 
 group = 'com.mempoolexplorer'
@@ -36,5 +37,16 @@ dependencies {
 test {
   useJUnitPlatform()
 }
+
+//Si no pasamos del 20% de cobertura esto falla
+//jacocoTestCoverageVerification	{
+//	violationRules	{
+//		rule	{
+//			limit	{
+//				minimum	=	0.2
+//			}
+//		}
+//	}
+//}
 
 //compileJava.dependsOn(processResources)
