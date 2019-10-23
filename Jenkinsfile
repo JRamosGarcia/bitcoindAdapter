@@ -13,7 +13,7 @@ pipeline{
         }
         stage("Unit tests"){
             steps{
-                sh "./gradlew testClasses"
+                sh "./gradlew test"
             }
         }
         stage("Code coverage"){
