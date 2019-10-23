@@ -49,7 +49,10 @@ jacocoTestCoverageVerification	{
 		}
 	}
 }
+
+//Fichero raiz del plugin checkstyle
 checkstyle {
         configFile = rootProject.file('./checkstyle.xml')
     }
+
 //compileJava.dependsOn(processResources)

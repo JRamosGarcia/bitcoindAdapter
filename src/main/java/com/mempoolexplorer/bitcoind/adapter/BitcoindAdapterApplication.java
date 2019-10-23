@@ -21,7 +21,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
-//TODO: Hay que meter actuadores de la version 2.0.
 @SpringBootApplication
 public class BitcoindAdapterApplication {
 
