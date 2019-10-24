@@ -55,4 +55,9 @@ checkstyle {
         configFile = rootProject.file('./checkstyle.xml')
     }
 
+bootJar {
+    baseName = 'bitcoindAdapter'
+    version =  '0.0.1-SNAPSHOT'
+}
+
 //compileJava.dependsOn(processResources)
