@@ -43,15 +43,18 @@ pipeline{
 		}
 		stage("Package"){
 			steps{
-		    sh "./gradlew bootJar"
+		    	sh "./gradlew bootJar"
 			}
 		}
 		stage("Docker build"){
 			steps{
-		    sh "docker build -t localhost:5000/bitcoind_adapter ."
+		    	sh "docker build -t localhost:5000/bitcoind_adapter ."
 			}
 		}
-
-
+		stage("Docker push"){
+		    steps{
+		        sh "docker push localhost:5000/bitcoind_adapter"
+		    }
+		}
     }
 }
