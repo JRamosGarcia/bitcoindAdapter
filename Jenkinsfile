@@ -48,7 +48,7 @@ pipeline{
 		}
 		stage("Docker build"){
 			steps{
-		    sh "docker build -t localhost:5000/bitcoind ."
+		    sh "docker build -t localhost:5000/bitcoindAdapter ."
 			}
 		}
 
