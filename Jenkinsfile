@@ -62,11 +62,11 @@ pipeline{
 			}
 		}
 		stage("Acceptance Test"){
-		    sleep 100
-		    sh "./acceptanceTest.sh"
+			steps{
+			    sleep 100
+			    sh "./acceptanceTest.sh"
+			}			
 		}
-
-
 		post{
 		    always{
 		        sh "docker-compose down"
