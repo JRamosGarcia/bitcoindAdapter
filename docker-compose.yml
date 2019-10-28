@@ -1,0 +1,28 @@
+version: "3"
+services:
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    networks:
+      bitnet:
+       ipv4_address: 172.18.0.2
+    volumes:
+      - mongodb_data_volume:/data/db
+  bitcoind_adapter:
+    image: localhost:5000/bitcoind_adapter:latest
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    networks:
+      bitnet:
+       ipv4_address: 172.18.0.3
+networks:
+  bitnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet:  172.18.0.0/16
+#        - gateway: 172.18.0.1
+volumes:
+  mongodb_data_volume:
