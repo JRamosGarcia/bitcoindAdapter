@@ -1,8 +1,8 @@
 pipeline{
     agent any
-    triggers {
-          pollSCM('H * * * *')
-     }
+//    triggers {
+//         pollSCM('H * * * *')
+//     }
     stages{
         stage("Checkout"){
             steps{
@@ -56,5 +56,23 @@ pipeline{
 		        sh "docker push localhost:5000/bitcoind_adapter"
 		    }
 		}
+		stage("Deploy to Staging"){
+			steps{
+			    sh "docker-compose up -d"
+			}
+		}
+		stage("Acceptance Test"){
+		    sleep 100
+		    sh "./acceptanceTest.sh"
+		}
+
+
+		post{
+		    always{
+		        sh "docker-compose down"
+		    }
+
+		}
+
     }
 }
