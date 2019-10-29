@@ -48,12 +48,12 @@ pipeline{
 		}
 		stage("Docker build"){
 			steps{
-		    	sh "docker build -t localhost:5000/bitcoind_adapter ."
+		    	sh "docker build -t localhost:5000/bitcoind_adapter:${BUILD_TIMESTAMP} ."
 			}
 		}
 		stage("Docker push"){
 		    steps{
-		        sh "docker push localhost:5000/bitcoind_adapter"
+		        sh "docker push localhost:5000/bitcoind_adapter:${BUILD_TIMESTAMP}"
 		    }
 		}
 		stage("Deploy to Staging"){
