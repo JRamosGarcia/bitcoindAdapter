@@ -17,6 +17,8 @@ services:
     networks:
       bitnet:
        ipv4_address: 172.18.0.3
+    depends_on:
+      - mongo
 networks:
   bitnet:
     driver: bridge
