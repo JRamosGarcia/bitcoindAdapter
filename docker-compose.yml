@@ -1,5 +1,12 @@
 version: "3"
 services:
+  configuration_server:
+    image: localhost:5000/configuration_server:latest
+    ports:
+      - "8888:8888"
+    networks:
+      bitnet:
+        ipv4_address: 172.18.0.4
   mongo:
     image: mongo:latest
     ports:
@@ -17,8 +24,10 @@ services:
     networks:
       bitnet:
        ipv4_address: 172.18.0.3
+    restart: on-failure
     depends_on:
       - mongo
+      - configuration_server
 networks:
   bitnet:
     driver: bridge

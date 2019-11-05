@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -23,6 +24,7 @@ import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
 //TODO":Meter sonarq cuando tengas mucho tiempo libre.
 @SpringBootApplication
+@RefreshScope
 public class BitcoindAdapterApplication {
 
 	@Autowired
