@@ -184,16 +184,19 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Validate.notNull(tx.getTxOutputs(), "txOutputs can't be null");
 		Validate.notNull(tx.getSize(), "size can't be null");
 		Validate.notNull(tx.getvSize(), "vsize can't be null");
-		Validate.notNull(tx.getFee(), "fee can't be null");
 		Validate.notNull(tx.getSatBytes(), "satBytes can't be null");
 		Validate.notNull(tx.getDescendantCount(), "descendantCount can't be null");
 		Validate.notNull(tx.getDescendantSize(), "descendantSize can't be null");
-		Validate.notNull(tx.getDescendantFees(), "descendantFees can't be null");
 		Validate.notNull(tx.getAncestorCount(), "ancestorCount can't be null");
 		Validate.notNull(tx.getAncestorSize(), "ancestorSize can't be null");
-		Validate.notNull(tx.getAncestorFees(), "ancestorFees can't be null");
 		Validate.notNull(tx.getDepends(), "depends can't be null");
-
+		Validate.notNull(tx.getFees(), "Fees object can't be null");
+		Validate.notNull(tx.getFees().getBase(), "Fees.base can't be null");
+		Validate.notNull(tx.getFees().getModified(), "Fees.modified can't be null");
+		Validate.notNull(tx.getFees().getAncestor(), "Fees.ancestor can't be null");
+		Validate.notNull(tx.getFees().getDescendant(), "Fees.descendant can't be null");
+		
+		
 		Validate.notEmpty(tx.getTxInputs(), "txInputs can't be empty");
 		Validate.notEmpty(tx.getTxOutputs(), "txOutputs can't be empty");
 
@@ -248,7 +251,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		// Satoshis per byte are calulated here. (Segwit compatible)
 		int vSize = rawTx.getGetRawTransactionResultData().getVsize();
 		tx.setvSize(vSize);
-		tx.setSatBytes(((double) tx.getFee()) / ((double) vSize));
+		tx.setSatBytes(((double) tx.getFees().getBase()) / ((double) vSize));
 		// At this point transaction must be correct if not error, we validate it.
 		if ((null != tx.getTxId()) && (!withErrorTxIdSet.contains(tx.getTxId()))) {
 			validateTx(tx);

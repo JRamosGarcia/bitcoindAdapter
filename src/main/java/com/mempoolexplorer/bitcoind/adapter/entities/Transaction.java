@@ -15,140 +15,17 @@ public class Transaction {
 	private List<TxOutput> txOutputs = new ArrayList<>();
 	private Integer size;// In bytes
 	private Integer vSize;// In bytes
-	private Long fee;
+	private Fees fees;
 	private Double satBytes;
 	private Long timeInSecs;// Epoch time in seconds since the transaction entered.
 	private Integer descendantCount;// The number of in-mempool descendant transactions (including this one)
 	private Integer descendantSize;// The size of in-mempool descendants (including this one)
-	private Integer descendantFees;// The modified fees (see modifiedfee above) of in-mempool descendants
-	// (including this one)
 	private Integer ancestorCount;// The number of in-mempool ancestor transactions (including this one)
 	private Integer ancestorSize;// The size of in-mempool ancestors (including this one)
-	private Integer ancestorFees;// The modified fees (see modifiedfee above) of in-mempool ancestors (including
-									// this one)
 	private List<String> depends = new ArrayList<>();// An array holding TXIDs of unconfirmed transactions (encoded as
 														// hex in
 	// RPC
 
-	public void setTxId(String txId) {
-		this.txId = txId;
-	}
-
-	public void setTxInputs(List<TxInput> txInputs) {
-		this.txInputs = txInputs;
-	}
-
-	public void setTxOutputs(List<TxOutput> txOutputs) {
-		this.txOutputs = txOutputs;
-	}
-
-	public void setSize(Integer size) {
-		this.size = size;
-	}
-
-	public void setvSize(Integer vSize) {
-		this.vSize = vSize;
-	}
-
-	public void setFee(Long fee) {
-		this.fee = fee;
-	}
-
-	public void setSatBytes(Double satBytes) {
-		this.satBytes = satBytes;
-	}
-
-	public void setTimeInSecs(Long timeInSecs) {
-		this.timeInSecs = timeInSecs;
-	}
-
-	public void setDescendantCount(Integer descendantCount) {
-		this.descendantCount = descendantCount;
-	}
-
-	public void setDescendantSize(Integer descendantSize) {
-		this.descendantSize = descendantSize;
-	}
-
-	public void setDescendantFees(Integer descendantFees) {
-		this.descendantFees = descendantFees;
-	}
-
-	public void setAncestorCount(Integer ancestorCount) {
-		this.ancestorCount = ancestorCount;
-	}
-
-	public void setAncestorSize(Integer ancestorSize) {
-		this.ancestorSize = ancestorSize;
-	}
-
-	public void setAncestorFees(Integer ancestorFees) {
-		this.ancestorFees = ancestorFees;
-	}
-
-	public void setDepends(List<String> depends) {
-		this.depends = depends;
-	}
-
-	public String getTxId() {
-		return txId;
-	}
-
-	public List<TxInput> getTxInputs() {
-		return txInputs;
-	}
-
-	public List<TxOutput> getTxOutputs() {
-		return txOutputs;
-	}
-
-	public Integer getSize() {
-		return size;
-	}
-
-	public Integer getvSize() {
-		return vSize;
-	}
-
-	public Long getFee() {
-		return fee;
-	}
-
-	public Double getSatBytes() {
-		return satBytes;
-	}
-
-	public Long getTimeInSecs() {
-		return timeInSecs;
-	}
-
-	public Integer getDescendantCount() {
-		return descendantCount;
-	}
-
-	public Integer getDescendantSize() {
-		return descendantSize;
-	}
-
-	public Integer getDescendantFees() {
-		return descendantFees;
-	}
-
-	public Integer getAncestorCount() {
-		return ancestorCount;
-	}
-
-	public Integer getAncestorSize() {
-		return ancestorSize;
-	}
-
-	public Integer getAncestorFees() {
-		return ancestorFees;
-	}
-
-	public List<String> getDepends() {
-		return depends;
-	}
 
 	/**
 	 * Returns all addresses involved in this transaction, address in inputs,
@@ -161,6 +38,111 @@ public class Transaction {
 		return txOutputs.stream().map(txOutput -> txOutput.getAddressIds()).flatMap(addresses -> addresses.stream())
 				.collect(Collectors.toCollection(() -> txInputsAddresses));
 	}
+
+	public String getTxId() {
+		return txId;
+	}
+
+	public void setTxId(String txId) {
+		this.txId = txId;
+	}
+
+	public List<TxInput> getTxInputs() {
+		return txInputs;
+	}
+
+	public void setTxInputs(List<TxInput> txInputs) {
+		this.txInputs = txInputs;
+	}
+
+	public List<TxOutput> getTxOutputs() {
+		return txOutputs;
+	}
+
+	public void setTxOutputs(List<TxOutput> txOutputs) {
+		this.txOutputs = txOutputs;
+	}
+
+	public Integer getSize() {
+		return size;
+	}
+
+	public void setSize(Integer size) {
+		this.size = size;
+	}
+
+	public Integer getvSize() {
+		return vSize;
+	}
+
+	public void setvSize(Integer vSize) {
+		this.vSize = vSize;
+	}
+
+	public Fees getFees() {
+		return fees;
+	}
+
+	public void setFees(Fees fees) {
+		this.fees = fees;
+	}
+
+	public Double getSatBytes() {
+		return satBytes;
+	}
+
+	public void setSatBytes(Double satBytes) {
+		this.satBytes = satBytes;
+	}
+
+	public Long getTimeInSecs() {
+		return timeInSecs;
+	}
+
+	public void setTimeInSecs(Long timeInSecs) {
+		this.timeInSecs = timeInSecs;
+	}
+
+	public Integer getDescendantCount() {
+		return descendantCount;
+	}
+
+	public void setDescendantCount(Integer descendantCount) {
+		this.descendantCount = descendantCount;
+	}
+
+	public Integer getDescendantSize() {
+		return descendantSize;
+	}
+
+	public void setDescendantSize(Integer descendantSize) {
+		this.descendantSize = descendantSize;
+	}
+
+	public Integer getAncestorCount() {
+		return ancestorCount;
+	}
+
+	public void setAncestorCount(Integer ancestorCount) {
+		this.ancestorCount = ancestorCount;
+	}
+
+	public Integer getAncestorSize() {
+		return ancestorSize;
+	}
+
+	public void setAncestorSize(Integer ancestorSize) {
+		this.ancestorSize = ancestorSize;
+	}
+
+	public List<String> getDepends() {
+		return depends;
+	}
+
+	public void setDepends(List<String> depends) {
+		this.depends = depends;
+	}
+
 
 	@Override
 	public String toString() {
@@ -175,8 +157,8 @@ public class Transaction {
 		builder.append(size);
 		builder.append(", vSize=");
 		builder.append(vSize);
-		builder.append(", fee=");
-		builder.append(fee);
+		builder.append(", fees=");
+		builder.append(fees);
 		builder.append(", satBytes=");
 		builder.append(satBytes);
 		builder.append(", timeInSecs=");
@@ -185,14 +167,10 @@ public class Transaction {
 		builder.append(descendantCount);
 		builder.append(", descendantSize=");
 		builder.append(descendantSize);
-		builder.append(", descendantFees=");
-		builder.append(descendantFees);
 		builder.append(", ancestorCount=");
 		builder.append(ancestorCount);
 		builder.append(", ancestorSize=");
 		builder.append(ancestorSize);
-		builder.append(", ancestorFees=");
-		builder.append(ancestorFees);
 		builder.append(", depends=");
 		builder.append(depends);
 		builder.append("]");
