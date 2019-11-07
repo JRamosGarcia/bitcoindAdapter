@@ -1,14 +1,27 @@
 version: "3"
 services:
+
   configuration_server:
     image: localhost:5000/configuration_server:latest
+    container_name: configuration_server 
     ports:
       - "8888:8888"
     networks:
       bitnet:
         ipv4_address: 172.18.0.4
+        
+  service_discovery:
+    image: localhost:5000/service_discovery:latest
+    container_name: service_discovery 
+    ports:
+      - "8761:8761"
+    networks:
+      bitnet:
+        ipv4_address: 172.18.0.5
+    
   mongo:
     image: mongo:latest
+    container_name: mongo
     ports:
       - "27017:27017"
     networks:
@@ -16,8 +29,10 @@ services:
        ipv4_address: 172.18.0.2
     volumes:
       - mongodb_data_volume:/data/db
+
   bitcoind_adapter:
     image: localhost:5000/bitcoind_adapter:latest
+    container_name: bitcoind_adapter 
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -28,6 +43,7 @@ services:
     depends_on:
       - mongo
       - configuration_server
+      - service_discovery
 networks:
   bitnet:
     driver: bridge

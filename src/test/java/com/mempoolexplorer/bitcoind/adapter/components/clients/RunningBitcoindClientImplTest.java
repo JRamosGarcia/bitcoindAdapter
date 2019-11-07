@@ -26,11 +26,11 @@ public class RunningBitcoindClientImplTest {
 	//@Autowired
 	//private BitcoindClient bitcoindClient;
 
-	@Test
-	public void getInfoResultTest() throws URISyntaxException {
+	//@Test
+	//public void getInfoResultTest() throws URISyntaxException {
 		/*
 		 * GetMemPoolInfo memPoolInfo = bitcoindClient.getMemPoolInfo();
 		 * assertNull(memPoolInfo.getError()); System.out.println(memPoolInfo);
 		 */	
-	}
+	//}
 }
