@@ -1,5 +1,5 @@
 plugins {
-  id 'org.springframework.boot' version '2.2.0.RELEASE'
+  id 'org.springframework.boot' version '2.2.1.RELEASE'
   id 'io.spring.dependency-management' version '1.0.8.RELEASE'
   id 'com.palantir.docker' version '0.22.1'
   id 'java'
@@ -28,8 +28,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.cloud:spring-cloud-starter-config'
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-	
-	
   	testImplementation('org.springframework.boot:spring-boot-starter-test') {
     	exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
   	}
@@ -53,7 +51,7 @@ test {
   useJUnitPlatform()
 }
 
-//Si no pasamos del 20% de cobertura esto falla
+//Fails with less than 20% covering tests
 jacocoTestCoverageVerification	{
 	violationRules	{
 		rule	{
@@ -64,7 +62,7 @@ jacocoTestCoverageVerification	{
 	}
 }
 
-//Fichero raiz del plugin checkstyle
+//plugin checkstyle root file
 checkstyle {
         configFile = rootProject.file('./checkstyle.xml')
     }
@@ -73,7 +71,7 @@ bootJar {
     baseName = 'bitcoindAdapter'
     version =  '0.0.1-SNAPSHOT'
 }
-/*// Esto es formato recomendado
+/*// Recommended buy complicated
 task unpack(type: Copy) {
     dependsOn bootJar
     from(zipTree(tasks.bootJar.outputs.files.singleFile))
@@ -87,7 +85,7 @@ docker {
 }
 */
 
-//Este es mi formato
+//Easy way
 docker {
     name "localhost:5000/bitcoind_adapter:latest"
     copySpec.from("build/libs/bitcoindAdapter-0.0.1-SNAPSHOT.jar").into("app")
