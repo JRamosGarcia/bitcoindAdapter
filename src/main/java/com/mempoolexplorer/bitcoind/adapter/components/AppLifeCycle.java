@@ -22,10 +22,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
+import com.mempoolexplorer.bitcoind.adapter.components.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes.TxPoolChangesContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;

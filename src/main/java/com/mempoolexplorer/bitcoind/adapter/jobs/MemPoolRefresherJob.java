@@ -7,10 +7,10 @@ import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mempoolexplorer.bitcoind.adapter.components.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes.TxPoolChangesContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
