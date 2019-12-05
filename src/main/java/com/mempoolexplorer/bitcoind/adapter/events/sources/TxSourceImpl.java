@@ -1,4 +1,4 @@
-package com.mempoolexplorer.bitcoind.adapter.components.events.sources;
+package com.mempoolexplorer.bitcoind.adapter.events.sources;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.messaging.Source;

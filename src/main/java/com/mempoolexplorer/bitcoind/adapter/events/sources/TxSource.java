@@ -1,4 +1,4 @@
-package com.mempoolexplorer.bitcoind.adapter.components.events.sources;
+package com.mempoolexplorer.bitcoind.adapter.events.sources;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
