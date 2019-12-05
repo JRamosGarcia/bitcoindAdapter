@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes.TxPoolChangesContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
@@ -31,6 +32,10 @@ public class MemPoolRefresherJob implements Job {
 
 	private TxPoolService memPoolService;
 
+	private TxSource txSource;
+
+	private static Boolean firstMemPoolRefresh = Boolean.TRUE;
+
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 		try {
@@ -38,10 +43,22 @@ public class MemPoolRefresherJob implements Job {
 			if (saveDBOnRefresh) {
 				memPoolService.apply(txPoolDiff);
 			}
-			// Export changes to REST Service only if there are changes
+			// Export changes to REST Service and MsgQueue only if there are changes
 			if (txPoolDiff.hasChanges()) {
 				TxPoolChanges txPoolChanges = txPoolChangesFactory.from(txPoolDiff);
 				txPoolChangesContainer.add(txPoolChanges);
+
+				// TODO: Make this better
+				// FirstTime this is executed the message equals mempoolSize if no fresh txs are
+				// in db. So better let others converge to your mempool slowly or by other
+				// means.
+				if (firstMemPoolRefresh) {
+					firstMemPoolRefresh = Boolean.FALSE;
+					logger.info("Mempool Refreshed by the first time. No message will be sent to msgQueue");
+				} else {
+					logger.info("Mempool Refreshed, sending msg to msgQueue");
+					txSource.publishTxChanges(txPoolChanges);
+				}
 			}
 			// Jobs can only throw JobExecutionException. it will be logged with level=info.
 		} catch (MemPoolException e) {
@@ -91,4 +108,11 @@ public class MemPoolRefresherJob implements Job {
 		this.memPoolService = memPoolService;
 	}
 
+	public TxSource getTxSource() {
+		return txSource;
+	}
+
+	public void setTxSource(TxSource txSource) {
+		this.txSource = txSource;
+	}
 }

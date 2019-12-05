@@ -17,7 +17,7 @@ repositories {
 }
 
 ext {
-  set('springCloudVersion', "Hoxton.RC1")
+  set('springCloudVersion', "Hoxton.RELEASE")
 }
 
 dependencies {
@@ -28,10 +28,18 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.cloud:spring-cloud-starter-config'
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	implementation 'org.springframework.cloud:spring-cloud-stream'
+	implementation 'org.springframework.cloud:spring-cloud-stream-binder-kafka'
+	implementation 'org.springframework.kafka:spring-kafka'
+	
   	testImplementation('org.springframework.boot:spring-boot-starter-test') {
     	exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
   	}
-	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+  	
+	testImplementation 'org.springframework.cloud:spring-cloud-stream-test-support'
+  	testImplementation 'org.springframework.kafka:spring-kafka-test'
+  	
+  	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	
 		
 	//Librerias que convendría quitar
