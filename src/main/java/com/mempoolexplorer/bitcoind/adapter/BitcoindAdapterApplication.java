@@ -24,10 +24,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
-//TODO":Meter sonarq cuando tengas mucho tiempo libre.
+//TODO:Meter sonarq cuando tengas mucho tiempo libre.
 @SpringBootApplication
 @RefreshScope
-@EnableBinding(Source.class)
 public class BitcoindAdapterApplication {
 
 	@Autowired
@@ -72,11 +71,6 @@ public class BitcoindAdapterApplication {
 	public SchedulerFactory getSchedulerFactory() {
 		return new StdSchedulerFactory();
 	}
-
-//	@Bean
-//	public Scheduler getScheduler() throws SchedulerException {
-//		return getSchedulerFactory().getScheduler();
-//	}
 
 	@Bean
 	public Clock clock() {

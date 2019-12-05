@@ -1,21 +1,24 @@
 package com.mempoolexplorer.bitcoind.adapter.events.sources;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.messaging.Source;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.integration.support.MessageBuilder;
-import org.springframework.stereotype.Component;
+import org.springframework.messaging.MessageChannel;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
+import com.mempoolexplorer.bitcoind.adapter.events.CustomChannels;
 
-@Component
+@EnableBinding(CustomChannels.class)
 public class TxSourceImpl implements TxSource {
 
 	@Autowired
-	private Source source;
+	@Qualifier("txMemPoolChangesChannel")
+	private MessageChannel txMemPoolChangesChannel;
 
 	@Override
 	public void publishTxChanges(TxPoolChanges txPoolChanges) {
-		source.output().send(MessageBuilder.withPayload(txPoolChanges).build());
+		txMemPoolChangesChannel.send(MessageBuilder.withPayload(txPoolChanges).build());
 	}
 	
 	
