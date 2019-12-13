@@ -43,4 +43,19 @@ public class TxPoolChanges {
 		this.removedTxsId = removedTxsId;
 	}
 
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("TxPoolChanges [changeTime=");
+		builder.append(changeTime);
+		builder.append(", changeCounter=");
+		builder.append(changeCounter);
+		builder.append(", newTxs=");
+		builder.append(newTxs);
+		builder.append(", removedTxsId=");
+		builder.append(removedTxsId);
+		builder.append("]");
+		return builder.toString();
+	}
+
 }

@@ -16,19 +16,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mempoolexplorer.bitcoind.adapter.components.AppState;
-import com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes.TxPoolChangesContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers.TxPoolContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.controllers.errors.ErrorDetails;
 import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.MemPoolSizeTooBigException;
 import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.TransactionNotFoundInMemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 
 @RestController
 @RequestMapping("/memPool")
-public class AdapterController {
+public class MemPoolController {
 
 	@Autowired
 	private BitcoindAdapterProperties properties;
@@ -36,6 +38,7 @@ public class AdapterController {
 	@Autowired
 	private TxPoolContainer memPoolContainer;
 
+	
 	@Autowired
 	private TxPoolChangesContainer memPoolChangesContainer;
 
@@ -89,7 +92,7 @@ public class AdapterController {
 	@GetMapping("/changes")
 	public List<TxPoolChanges> getMemPoolChanges() {
 		// Return all changes
-		return memPoolChangesContainer.getLastChangesFrom(Instant.ofEpochMilli(0));
+		return memPoolChangesContainer.getLastChangesFrom(Instant.ofEpochMilli(1));
 	}
 
 	@GetMapping("/changesFrom/{changeCounter}")

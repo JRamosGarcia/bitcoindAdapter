@@ -8,6 +8,6 @@ public interface TxPoolFiller {
 
 	TxPool createMemPool() throws MemPoolException;
 
-	TxPoolDiff refreshMemPool(TxPool txPool) throws MemPoolException;
+	TxPoolDiff obtainMemPoolDiffs(TxPool txPool) throws MemPoolException;
 
 }

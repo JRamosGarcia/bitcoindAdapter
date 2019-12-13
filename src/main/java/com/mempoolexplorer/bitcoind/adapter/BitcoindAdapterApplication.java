@@ -15,6 +15,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.messaging.Source;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -26,7 +27,7 @@ import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
 //TODO:Meter sonarq cuando tengas mucho tiempo libre.
 @SpringBootApplication
-@RefreshScope
+//@RefreshScope
 public class BitcoindAdapterApplication {
 
 	@Autowired
@@ -37,13 +38,13 @@ public class BitcoindAdapterApplication {
 		// If no profiles are set through cmd line argument or system environment or jvm
 		// arguments then use prod and mainNet profiles
 		SpringApplication app = new SpringApplication(BitcoindAdapterApplication.class);
-		SimpleCommandLinePropertySource source = new SimpleCommandLinePropertySource(args);
-		RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
-		List<String> jvmArguments = runtimeMxBean.getInputArguments();
-		if (!source.containsProperty("spring.profiles.active") && !System.getenv().containsKey("SPRING_PROFILES_ACTIVE")
-				&& !containsProfilesActiveArgument(jvmArguments)) {
-			app.setAdditionalProfiles(AppProfiles.PROD, AppProfiles.MAIN_NET);
-		}
+//		SimpleCommandLinePropertySource source = new SimpleCommandLinePropertySource(args);
+//		RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
+//		List<String> jvmArguments = runtimeMxBean.getInputArguments();
+//		if (!source.containsProperty("spring.profiles.active") && !System.getenv().containsKey("SPRING_PROFILES_ACTIVE")
+//				&& !containsProfilesActiveArgument(jvmArguments)) {
+//			app.setAdditionalProfiles(AppProfiles.PROD, AppProfiles.MAIN_NET);
+//		}
 		app.run(args);
 		// Application really begins to work in class {@code AppLifeCycle}
 	}

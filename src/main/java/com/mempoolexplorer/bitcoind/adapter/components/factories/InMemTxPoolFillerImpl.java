@@ -30,6 +30,8 @@ import com.mempoolexplorer.bitcoind.adapter.entities.TxOutput;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
+import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
+import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 
 @Component
@@ -62,6 +64,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	 * be started with txindex=1 flag.
 	 */
 	@Override
+	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
 	public TxPool createMemPool() throws MemPoolException {
 		try {
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
@@ -85,10 +88,12 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	}
 
 	@Override
-	public TxPoolDiff refreshMemPool(TxPool txPool) throws MemPoolException {
+	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_REFRESH_TIME)
+	public TxPoolDiff obtainMemPoolDiffs(TxPool txPool) throws MemPoolException {
 		try {
 			Set<String> myMemPoolKeySet = txPool.getFullTxPool().keySet();
 
+			//TODO: Aqui deberíamos usar getmempool sin verbose y luego preguntar por los que faltan, si no esto va a tardar mucho cuando el mempool sea grande
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
 			logger.debug(
 					"refreshing mempool bitcoindClient.getRawMemPoolVerbose() returned a mempool with {} transactions",

@@ -1,8 +1,5 @@
 package com.mempoolexplorer.bitcoind.adapter.components.clients;
 
-import java.net.URISyntaxException;
-
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
@@ -23,14 +20,12 @@ import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
 @DirtiesContext
 public class RunningBitcoindClientImplTest {
 
-	//@Autowired
-	//private BitcoindClient bitcoindClient;
-
-	//@Test
-	//public void getInfoResultTest() throws URISyntaxException {
-		/*
-		 * GetMemPoolInfo memPoolInfo = bitcoindClient.getMemPoolInfo();
-		 * assertNull(memPoolInfo.getError()); System.out.println(memPoolInfo);
-		 */	
-	//}
+	/*
+	 * @Autowired private BitcoindClient bitcoindClient;
+	 * 
+	 * @Test public void getInfoResultTest() throws URISyntaxException {
+	 * 
+	 * GetMemPoolInfo memPoolInfo = bitcoindClient.getMemPoolInfo();
+	 * assertNull(memPoolInfo.getError()); System.out.println(memPoolInfo); }
+	 */
 }

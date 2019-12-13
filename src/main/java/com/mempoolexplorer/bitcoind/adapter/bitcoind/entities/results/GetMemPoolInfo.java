@@ -21,6 +21,4 @@ public class GetMemPoolInfo extends BitcoindResult {
 				+ getId() + "]";
 	}
 
-
-
 }

@@ -6,6 +6,10 @@ bitcoindAdapter uses mainly these bitcoind RPC calls:
   * getrawmempool (verbose) to obtain the mempool, and then for each txInput in each transaction:
   * getRawTransaction (decoded) is called. 
 
+Mempool changes and new blocks are sent through a configurable kafka topic (memPool.tx.changes). Mempool tx changes are guaranteed not to be sent when a new block is mined. That is, if a new block is detected after checking mempool changes, these changes are not sent or stored. They wait for the next refresh round to be sent and stored.
+
+This ensures a message order in which message consumers can store the new block transactions before they are removed from mempool in the next message, enabling consumers to compare mined block txs with mempool txs.  
+
 Also, it uses a mongodb database for (optionally) storing the mempool.
 
 ## Requirements
@@ -63,8 +67,13 @@ REST API `/memPool/full`  returns all mempool, if tx number in mempool is above 
 * `bitcoindadapter.memPoolChangesSize=10`
 REST API `/memPool/changes` returns last 10 changes in memPool.
 
-## REST API
+* `bitcoindadapter.newBlockListSize=3`
+REST API `/lastBlocks` return last 3 blocks
 
+## REST API
+* `/lastBlocks` Returns a list with all last blocks recevived (normally last 3)
+* `/lastBlocksFrom/{epochSecond}/{nano}` Returns last blocks from epochSecond/nano
+* `/lastBlocksFrom/{height}` Returns last blocks from {height}
 * `/memPool` Returns a list with all txIds in mempool
 * `/memPool/full` Returns all mempool if `bitcoindadapter.maxMemPoolSizeReturnedInTxNumber` property allows it.
 * `/memPool/{txId}` Returns decoded tx with txId given as parameter

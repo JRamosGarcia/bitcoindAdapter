@@ -1,4 +1,4 @@
-package com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers;
+package com.mempoolexplorer.bitcoind.adapter.components.containers.txpool;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -7,13 +7,10 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
-import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -27,10 +24,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 @Component
 public class TxPoolContainerImpl implements TxPoolContainer {
 
-	@Autowired
-	private InMemTxPoolFillerImpl inMemTxPoolFiller;
 
-	
 	@Autowired
 	private MeterRegistry registry;
 
@@ -43,20 +37,8 @@ public class TxPoolContainerImpl implements TxPoolContainer {
 	}
 
 	@Override
-	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
-	public TxPool createTxPool() throws MemPoolException {
-
-		txPool = inMemTxPoolFiller.createMemPool();
-
-		return txPool;
-	}
-
-	@Override
-	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_REFRESH_TIME)
-	public TxPoolDiff refreshTxPool() throws MemPoolException {
-		TxPoolDiff memPoolDiff = inMemTxPoolFiller.refreshMemPool(txPool);
-		txPool.apply(memPoolDiff);
-		return memPoolDiff;
+	public void setTxPool(TxPool txPool) throws MemPoolException {
+		this.txPool=txPool;
 	}
 
 	@Override

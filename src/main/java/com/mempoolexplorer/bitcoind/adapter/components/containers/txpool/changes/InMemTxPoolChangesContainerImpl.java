@@ -1,4 +1,4 @@
-package com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes;
+package com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public class InMemTxPoolChangesContainerImpl implements TxPoolChangesContainer {
 			Iterator<TxPoolChanges> i = circularFifoQueue.iterator(); // Must be in the synchronized block
 			while (i.hasNext()) {
 				TxPoolChanges memPoolChanges = i.next();
-				if (memPoolChanges.getChangeTime().isAfter(instant)) {
+				if (memPoolChanges.getChangeTime().isAfter(instant.minusNanos(1))) {//Include the current instant
 					txPoolChangesList.add(memPoolChanges);
 				}
 			}
@@ -59,7 +59,7 @@ public class InMemTxPoolChangesContainerImpl implements TxPoolChangesContainer {
 			Iterator<TxPoolChanges> i = circularFifoQueue.iterator(); // Must be in the synchronized block
 			while (i.hasNext()) {
 				TxPoolChanges txPoolChanges = i.next();
-				if (txPoolChanges.getChangeCounter() > changeCounter) {
+				if (txPoolChanges.getChangeCounter() >= changeCounter) {
 					txPoolChangesList.add(txPoolChanges);
 				}
 			}

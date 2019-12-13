@@ -10,6 +10,9 @@ import org.springframework.web.client.RestTemplate;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.BooleanArrayParamRequest;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.ObjectArrayParamRequest;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.StringArrayParamRequest;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockCount;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockHashResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTemplateResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
@@ -80,6 +83,39 @@ public class BitcoindClientImpl implements BitcoindClient {
 		objectParams.setParams(params);
 
 		return restTemplate.postForObject("/", objectParams, GetVerboseRawTransactionResult.class);
+	}
+
+	@Override
+	public Integer getBlockCount() {
+		StringArrayParamRequest stringParams = new StringArrayParamRequest();
+		stringParams.setId("7");
+		stringParams.setMethod("getblockcount");
+		stringParams.setParams(new ArrayList<String>());
+
+		return restTemplate.postForObject("/", stringParams, GetBlockCount.class).getBlockNumber();
+	}
+
+	@Override
+	public GetBlockResult getBlock(Integer blockHeight) {
+		ObjectArrayParamRequest objectParams = new ObjectArrayParamRequest();
+
+		objectParams.setId("8");
+		objectParams.setMethod("getblockhash");
+		List<Object> params = new ArrayList<>();
+		params.add(blockHeight);
+		objectParams.setParams(params);
+
+		GetBlockHashResult getblockHashResult = restTemplate.postForObject("/", objectParams, GetBlockHashResult.class);
+
+		String blockHash = getblockHashResult.getBlockHash();
+		objectParams = new ObjectArrayParamRequest();
+		objectParams.setId("9");
+		objectParams.setMethod("getblock");
+		params = new ArrayList<>();
+		params.add(blockHash);
+		params.add(1);// Verbosity level
+		objectParams.setParams(params);
+		return restTemplate.postForObject("/", objectParams, GetBlockResult.class);
 	}
 
 }

@@ -22,11 +22,16 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
+import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
-import com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes.TxPoolChangesContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.txpoolcontainers.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJob;
@@ -43,10 +48,19 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 	private TxPoolContainer txPoolContainer;
 
 	@Autowired
+	private LastBlocksContainer lastBlocksContainer;
+
+	@Autowired
 	private TxPoolChangesContainer txPoolChangesContainer;
 
 	@Autowired
+	private BlockFactory blockFactory;
+
+	@Autowired
 	private TxPoolChangesFactory txPoolChangesFactory;
+
+	@Autowired
+	private InMemTxPoolFillerImpl inMemTxPoolFiller;
 
 	@Autowired
 	private Scheduler scheduler;
@@ -63,8 +77,11 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 	@Autowired
 	private TxSource txSource;
 
+	@Autowired
+	private BitcoindClient bitcoindClient;
+
 	private Boolean applicationReadyEventFirstTime = Boolean.TRUE;
-	
+
 //	@SuppressWarnings("deprecation")
 //	private Boolean firstMemPoolRefresh = new Boolean(true);
 
@@ -79,10 +96,10 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 	public void initialization(ApplicationReadyEvent event) {
 		// SpringApplicationBuilder fires multiple notification to that listener (for
 		// every child)
-		//if (event.getApplicationContext().getParent() == null) {
-		//NO funciona lo anterior, haciendo chapuza...
-		if(applicationReadyEventFirstTime) {
-			applicationReadyEventFirstTime=Boolean.FALSE;
+		// if (event.getApplicationContext().getParent() == null) {
+		// NO funciona lo anterior, haciendo chapuza...
+		if (applicationReadyEventFirstTime) {
+			applicationReadyEventFirstTime = Boolean.FALSE;
 
 			// TODO Do this process more resilient in case bitcoind is not started.
 			log.info("Initializating bitcoindAdapter Mempool...");
@@ -101,7 +118,8 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 				} else {
 					log.info("BitcoindAdapter mempool loading from bitcoind client. It will take sometime");
 					appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
-					txPoolContainer.createTxPool();
+					TxPool txPool = inMemTxPoolFiller.createMemPool();
+					txPoolContainer.setTxPool(txPool);
 					loadedFrom = LoadedFrom.FROMCLIENT;
 				}
 				// It's a nonsense save in DB whatever you have just loaded.
@@ -118,27 +136,7 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 				appState.setState(AppStateEnum.STARTED);
 
 				log.info("BitcoindAdapter mempool initializated.");
-
-				// We are screwing in DB-jobs because Quartz Jobs serialize JobDataMap. But we
-				// are not using that feature.
-				JobDataMap jobDataMap = new JobDataMap();
-				jobDataMap.put("memPoolContainer", txPoolContainer);
-				jobDataMap.put("memPoolChangesContainer", txPoolChangesContainer);
-				jobDataMap.put("saveDBOnRefresh", props.getSaveDBOnRefresh());
-				jobDataMap.put("memPoolService", memPoolService);
-				jobDataMap.put("memPoolChangesFactory", txPoolChangesFactory);
-				jobDataMap.put("txSource", txSource);
-//				jobDataMap.put("firstMemPoolRefresh", firstMemPoolRefresh);
-				
-				JobDetail job = newJob(MemPoolRefresherJob.class).withIdentity("refreshJob", "mempool")
-						.setJobData(jobDataMap).build();
-				Trigger trigger = newTrigger().withIdentity("refreshTrigger", "mempool").startNow()
-						.withSchedule(simpleSchedule().withIntervalInSeconds(props.getRefreshIntervalSec())
-								.withMisfireHandlingInstructionNowWithRemainingCount().repeatForever())
-						.build();
-
-				scheduler.scheduleJob(job, trigger);
-				scheduler.start();
+				startJob();
 			} catch (MemPoolException e) {
 				log.error("Exception creating initial memPool: ", e);
 			} catch (SchedulerException e) {
@@ -146,6 +144,32 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 			}
 		}
 
+	}
+
+	private void startJob() throws SchedulerException {
+		// We are screwing in DB-jobs because Quartz Jobs serialize JobDataMap. But we
+		// are not using that feature.
+		JobDataMap jobDataMap = new JobDataMap();
+		jobDataMap.put("memPoolContainer", txPoolContainer);
+		jobDataMap.put("lastBlocksContainer", lastBlocksContainer);
+		jobDataMap.put("memPoolChangesContainer", txPoolChangesContainer);
+		jobDataMap.put("saveDBOnRefresh", props.getSaveDBOnRefresh());
+		jobDataMap.put("memPoolService", memPoolService);
+		jobDataMap.put("blockFactory", blockFactory);
+		jobDataMap.put("memPoolChangesFactory", txPoolChangesFactory);
+		jobDataMap.put("txSource", txSource);
+		jobDataMap.put("txPoolFiller", inMemTxPoolFiller);
+		jobDataMap.put("bitcoindClient", bitcoindClient);
+
+		JobDetail job = newJob(MemPoolRefresherJob.class).withIdentity("refreshJob", "mempool").setJobData(jobDataMap)
+				.build();
+		Trigger trigger = newTrigger().withIdentity("refreshTrigger", "mempool").startNow()
+				.withSchedule(simpleSchedule().withIntervalInSeconds(props.getRefreshIntervalSec())
+						.withMisfireHandlingInstructionNowWithRemainingCount().repeatForever())
+				.build();
+
+		scheduler.scheduleJob(job, trigger);
+		scheduler.start();
 	}
 
 	@PreDestroy

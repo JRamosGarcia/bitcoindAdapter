@@ -12,6 +12,7 @@ public class BitcoindAdapterProperties {
 	private Boolean saveDBOnStart;
 	private Boolean saveDBOnRefresh;
 	private Integer memPoolChangesSize;
+	private Integer newBlockListSize;
 	private Integer refreshIntervalSec;
 
 	public Integer getMaxMemPoolSizeReturnedInTxNumber() {
@@ -52,6 +53,14 @@ public class BitcoindAdapterProperties {
 
 	public void setMemPoolChangesSize(Integer memPoolChangesSize) {
 		this.memPoolChangesSize = memPoolChangesSize;
+	}
+
+	public Integer getNewBlockListSize() {
+		return newBlockListSize;
+	}
+
+	public void setNewBlockListSize(Integer newBlockListSize) {
+		this.newBlockListSize = newBlockListSize;
 	}
 
 	public Integer getRefreshIntervalSec() {

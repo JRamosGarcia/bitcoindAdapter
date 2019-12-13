@@ -6,6 +6,7 @@ import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResultData;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.CustomChannels;
 
@@ -20,6 +21,10 @@ public class TxSourceImpl implements TxSource {
 	public void publishTxChanges(TxPoolChanges txPoolChanges) {
 		txMemPoolChangesChannel.send(MessageBuilder.withPayload(txPoolChanges).build());
 	}
-	
-	
+
+	@Override
+	public void publishNewBlock(GetBlockResultData blockResultData) {
+		txMemPoolChangesChannel.send(MessageBuilder.withPayload(blockResultData).build());
+	}
+
 }

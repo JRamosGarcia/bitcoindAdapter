@@ -1,4 +1,4 @@
-package com.mempoolexplorer.bitcoind.adapter.components.mempoolcontainers.changes;
+package com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes;
 
 import java.time.Instant;
 import java.util.List;
