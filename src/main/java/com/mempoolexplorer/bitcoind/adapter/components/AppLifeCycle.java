@@ -16,7 +16,12 @@ import org.quartz.Trigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cloud.stream.binder.Binding;
+import org.springframework.cloud.stream.binder.BindingCreatedEvent;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -41,7 +46,7 @@ import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
 
 @Component
 @Profile(value = { AppProfiles.DEV, AppProfiles.PROD })
-public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */ {
+public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 
 	private static Logger log = LoggerFactory.getLogger(AppLifeCycle.class);
 
@@ -84,70 +89,97 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 	@Autowired
 	private BitcoindClient bitcoindClient;
 
-	private Boolean applicationReadyEventFirstTime = Boolean.TRUE;
+	private boolean hasInitializated = false;// Avoids intialization more than once
 
-//	@SuppressWarnings("deprecation")
-//	private Boolean firstMemPoolRefresh = new Boolean(true);
+	private boolean onApplicationReadyEvent = false;
+
+	private boolean onBindingCreatedEvent = false;
+
+	@Value("${spring.cloud.stream.bindings.txMemPoolEvents.destination}")
+	private String topic;
 
 	private enum LoadedFrom {
 		FROMDB, FROMCLIENT
 
 	}
 
+	@EventListener(ApplicationReadyEvent.class)
+	public void onApplicationReadyEvent(ApplicationReadyEvent event) {
+		onApplicationReadyEvent = true;
+		checkInitialization();
+	}
+
+	@EventListener(BindingCreatedEvent.class)
+	public void OnBindingCreatedEvent(BindingCreatedEvent event) {
+		@SuppressWarnings("unchecked")
+		Binding<Object> binding = (Binding<Object>) event.getSource();
+		//Checks that event.source is the same as our kafka topic
+		if(binding.getName().compareTo(topic)==0) {
+			onBindingCreatedEvent = true;
+			checkInitialization();
+		}
+	}
+
+	public void checkInitialization() {
+		if (onApplicationReadyEvent && onBindingCreatedEvent) {
+			if (!hasInitializated) {
+				hasInitializated = true;
+				initialization();
+			}
+		}
+	}
+
 	// @PostConstruct does not hook well. Called when webServices are not
 	// initialized. better hook on an aplicationReadyEvent.
-	@EventListener(ApplicationReadyEvent.class)
-	public void initialization(ApplicationReadyEvent event) {
-		// SpringApplicationBuilder fires multiple notification to that listener (for
-		// every child)
-		// if (event.getApplicationContext().getParent() == null) {
-		// Code above does not work, making tricks...
-		if (applicationReadyEventFirstTime) {
-			applicationReadyEventFirstTime = Boolean.FALSE;
+	// SpringApplicationBuilder fires multiple notification to that listener (for
+	// every child)
+	// if (event.getApplicationContext().getParent() == null) {
+	// aplicationReadyEvent is called before Kafka binding is done
+	// So above we check for ApplicationReadyEvent and BindingCreatedEvent
+	public void initialization() {
 
-			log.info("Initializating bitcoindAdapter Mempool...");
-			try {
-				Optional<TxPoolDiff> memPoolFromDB = Optional.empty();
-				if (bitcoindAdapterProperties.getLoadDBOnStart()) {
-					appState.setState(AppStateEnum.LOADINGFROMDB);
-					memPoolFromDB = memPoolService.loadTxPoolFromDB();
-				}
-
-				LoadedFrom loadedFrom = LoadedFrom.FROMDB;
-				if (memPoolFromDB.isPresent()) {
-					log.info("BitcoindAdapter mempool loaded from DB.");
-					txPoolContainer.getTxPool().apply(memPoolFromDB.get());
-					loadedFrom = LoadedFrom.FROMDB;
-				} else {
-					log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
-							bitcoindProperties.getHost(), bitcoindProperties.getPort());
-					appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
-					TxPool txPool = inMemTxPoolFiller.createMemPool();
-					txPoolContainer.setTxPool(txPool);
-					loadedFrom = LoadedFrom.FROMCLIENT;
-				}
-				// It's a nonsense save in DB whatever you have just loaded.
-				if (bitcoindAdapterProperties.getSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
-					log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
-					// TODO: maybe this takes too long and db connection closes after timeout
-					appState.setState(AppStateEnum.SAVINGTODB);
-					memPoolService.saveAllMemPool(txPoolContainer.getTxPool());
-					log.info("BitcoindAdapter mempool saved to DB.");
-				} else {
-					log.info("BitcoindAdapter mempool loaded. NOT saving to DB.");
-				}
-
-				appState.setState(AppStateEnum.STARTED);
-
-				log.info("BitcoindAdapter mempool initializated.");
-				startJob();
-			} catch (TxPoolException e) {
-				// log.error("Exception creating initial memPool: ", e);
-				throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
-			} catch (SchedulerException e) {
-				// log.error("Exception Starting scheduler: ", e);
-				throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
+		log.info("Initializating bitcoindAdapter Mempool...");
+		try {
+			Optional<TxPoolDiff> memPoolFromDB = Optional.empty();
+			if (bitcoindAdapterProperties.getLoadDBOnStart()) {
+				appState.setState(AppStateEnum.LOADINGFROMDB);
+				memPoolFromDB = memPoolService.loadTxPoolFromDB();
 			}
+
+			LoadedFrom loadedFrom = LoadedFrom.FROMDB;
+			if (memPoolFromDB.isPresent()) {
+				log.info("BitcoindAdapter mempool loaded from DB.");
+				txPoolContainer.getTxPool().apply(memPoolFromDB.get());
+				loadedFrom = LoadedFrom.FROMDB;
+			} else {
+				log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
+						bitcoindProperties.getHost(), bitcoindProperties.getPort());
+				appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
+				TxPool txPool = inMemTxPoolFiller.createMemPool();
+				txPoolContainer.setTxPool(txPool);
+				loadedFrom = LoadedFrom.FROMCLIENT;
+			}
+			// It's a nonsense save in DB whatever you have just loaded.
+			if (bitcoindAdapterProperties.getSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
+				log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
+				// TODO: maybe this takes too long and db connection closes after timeout
+				appState.setState(AppStateEnum.SAVINGTODB);
+				memPoolService.saveAllMemPool(txPoolContainer.getTxPool());
+				log.info("BitcoindAdapter mempool saved to DB.");
+			} else {
+				log.info("BitcoindAdapter mempool loaded. NOT saving to DB.");
+			}
+
+			appState.setState(AppStateEnum.STARTED);
+
+			log.info("BitcoindAdapter mempool initializated.");
+			startJob();
+		} catch (TxPoolException e) {
+			// log.error("Exception creating initial memPool: ", e);
+			throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
+		} catch (SchedulerException e) {
+			// log.error("Exception Starting scheduler: ", e);
+			throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
 		}
 
 	}
@@ -189,10 +221,12 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 		log.info("BitcoindAdapter mempool finalized.");
 	}
 
-	// // Just for debug.
-	// @Override
-	// public void onApplicationEvent(ApplicationEvent event) {
-	// log.info("ApplicationEvent: " + event.toString());
-	//
-	// }
+	// Just for debug.
+	@Override
+	public void onApplicationEvent(ApplicationEvent event) {
+		String str = event.toString();
+		if (str.contains("kafka") || str.contains("cloud")) {
+			log.info("ApplicationEvent: " + event.toString());
+		}
+	}
 }
