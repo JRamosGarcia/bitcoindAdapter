@@ -9,22 +9,19 @@ import org.springframework.messaging.MessageChannel;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResultData;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.CustomChannels;
+import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 
 @EnableBinding(CustomChannels.class)
 public class TxSourceImpl implements TxSource {
 
 	@Autowired
-	@Qualifier("txMemPoolChangesChannel")
-	private MessageChannel txMemPoolChangesChannel;
+	@Qualifier("txMemPoolEventsChannel")
+	private MessageChannel txMemPoolEventsChannel;
 
 	@Override
-	public void publishTxChanges(TxPoolChanges txPoolChanges) {
-		txMemPoolChangesChannel.send(MessageBuilder.withPayload(txPoolChanges).build());
-	}
-
-	@Override
-	public void publishNewBlock(GetBlockResultData blockResultData) {
-		txMemPoolChangesChannel.send(MessageBuilder.withPayload(blockResultData).build());
+	public void publishMemPoolEvent(MempoolEvent memPoolEvent) {
+		txMemPoolEventsChannel.send(MessageBuilder.withPayload(memPoolEvent).build());
+		
 	}
 
 }

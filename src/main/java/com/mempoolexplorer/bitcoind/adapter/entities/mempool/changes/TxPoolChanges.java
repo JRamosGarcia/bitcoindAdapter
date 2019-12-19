@@ -1,6 +1,7 @@
 package com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
@@ -8,8 +9,8 @@ import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 public class TxPoolChanges {
 	private Instant changeTime;
 	private Integer changeCounter;
-	private List<Transaction> newTxs;
-	private List<String> removedTxsId;
+	private List<Transaction> newTxs = new ArrayList<>();
+	private List<String> removedTxsId = new ArrayList<>();
 
 	public Instant getChangeTime() {
 		return changeTime;

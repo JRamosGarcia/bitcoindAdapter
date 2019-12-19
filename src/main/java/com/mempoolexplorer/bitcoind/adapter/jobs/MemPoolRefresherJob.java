@@ -1,5 +1,11 @@
 package com.mempoolexplorer.bitcoind.adapter.jobs;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -15,12 +21,16 @@ import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
+import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
+import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
+import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
+import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
 @DisallowConcurrentExecution
 public class MemPoolRefresherJob implements Job {
@@ -38,8 +48,6 @@ public class MemPoolRefresherJob implements Job {
 
 	private TxPoolChangesFactory txPoolChangesFactory;
 
-	private Boolean saveDBOnRefresh;
-
 	private TxPoolService memPoolService;
 
 	private TxSource txSource;
@@ -47,6 +55,8 @@ public class MemPoolRefresherJob implements Job {
 	private TxPoolFiller txPoolFiller;
 
 	private BitcoindClient bitcoindClient;
+
+	private BitcoindAdapterProperties bitcoindAdapterProperties;
 
 	private static Boolean firstMemPoolRefresh = Boolean.TRUE;
 
@@ -56,14 +66,15 @@ public class MemPoolRefresherJob implements Job {
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 		try {
 
-			// New blocks are sent before changes in mempool
-			sendIfNewBlock();
-
-			// TODO: Hacer que no se mande si hay bloque nuevo.
+			// New blocks are sent before changes in mempool, but if this is the first shot,
+			// we ignore new block if any
+			if (!firstMemPoolRefresh) {
+				sendIfNewBlock();
+			}
 			refreshMempoolAndSendChanges();
 
 			// Jobs can only throw JobExecutionException. it will be logged with level=info.
-		} catch (MemPoolException e) {
+		} catch (TxPoolException e) {
 			throw new JobExecutionException(e, false);
 		} catch (Throwable e) {
 			throw new JobExecutionException(e, false);
@@ -79,48 +90,87 @@ public class MemPoolRefresherJob implements Job {
 			GetBlockResult getBlockResult = bitcoindClient.getBlock(blockNumNow);
 			logger.info("New block with height: " + blockNumNow + " and hash:"
 					+ getBlockResult.getGetBlockResultData().getHash() + ". Sending msg to msgQueue");
-			
+
 			Block block = blockFactory.from(getBlockResult.getGetBlockResultData());
 			lastBlocksContainer.add(block);
-						
-			txSource.publishNewBlock(getBlockResult.getGetBlockResultData());
+
+			txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
 			blockNum++;
 		}
 	}
 
-	private void refreshMempoolAndSendChanges() throws MemPoolException {
+	private void refreshMempoolAndSendChanges() throws TxPoolException {
 		Integer blockNumbefore = bitcoindClient.getBlockCount();
 		TxPoolDiff txPoolDiff = txPoolFiller.obtainMemPoolDiffs(memPoolContainer.getTxPool());
 		Integer blockNumAfter = bitcoindClient.getBlockCount();
 
-		if (blockNumbefore.compareTo(blockNumAfter)!=0) {
+		if (blockNumbefore.compareTo(blockNumAfter) != 0) {
 			logger.info("There is a new block in-between refresh, not sending diffs");
 			return; // If there is a new block in-between we do not refresh mempool or send diffs
 		}
 
 		memPoolContainer.getTxPool().apply(txPoolDiff);
 
-		if (saveDBOnRefresh) {
+		if (bitcoindAdapterProperties.getSaveDBOnRefresh()) {
 			memPoolService.apply(txPoolDiff);
 		}
 
 		// Export changes to REST Service and MsgQueue only if there are changes
-		if (txPoolDiff.hasChanges()) {
-			TxPoolChanges txPoolChanges = txPoolChangesFactory.from(txPoolDiff);
-			txPoolChangesContainer.add(txPoolChanges);
 
-			// TODO: Make this better
-			// FirstTime this is executed the message equals mempoolSize if no fresh txs are
-			// in db. So better let others converge to your mempool slowly or by other
-			// means.
-			if (firstMemPoolRefresh) {
-				firstMemPoolRefresh = Boolean.FALSE;
-				logger.info("Mempool Refreshed by the first time. No message will be sent to msgQueue");
+		if (firstMemPoolRefresh) {
+			firstMemPoolRefresh = Boolean.FALSE;
+			if (bitcoindAdapterProperties.getSendAllTxOnStart()) {
+				logger.info(
+						"Mempool Refreshed by the first time. All messages will be sent to msgQueue. This can take a long time...");
+				sendAllMemPoolTxs();// This is an expensive operation, use with care.
 			} else {
-				logger.info("Mempool Refreshed, sending msg to msgQueue");
-				txSource.publishTxChanges(txPoolChanges);
+				// FirstTime this is executed the message equals mempoolSize if no fresh txs are
+				// in db. So better let others converge to your mempool slowly or by other
+				// means.
+				logger.info("Mempool Refreshed by the first time. No message will be sent to msgQueue");
+			}
+
+		} else {
+			if (txPoolDiff.hasChanges()) {
+				TxPoolChanges txPoolChanges = txPoolChangesFactory.from(txPoolDiff);
+				txPoolChangesContainer.add(txPoolChanges);
+				logger.info("Mempool Refreshed, sending msg txPoolChanges({}) to msgQueue",
+						txPoolChanges.getChangeCounter());
+				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPoolChanges));
 			}
 		}
+		logger.info("{} transactions in txMemPool.", memPoolContainer.getTxPool().getSize());
+	}
+
+	/**
+	 * Sends all memPool transactions 10 by 10
+	 */
+	private void sendAllMemPoolTxs() {
+		Map<String, Transaction> fullTxPool = memPoolContainer.getTxPool().getFullTxPool();
+		TxPoolChanges txpc = new TxPoolChanges();
+		txpc.setChangeCounter(0);// All change counter are set to 0
+		txpc.setChangeTime(Instant.now());
+
+		PercentLog pl = new PercentLog(fullTxPool.size());
+		int counter = 0;
+		Iterator<Entry<String, Transaction>> it = fullTxPool.entrySet().iterator();
+		while (it.hasNext()) {
+			Entry<String, Transaction> entry = it.next();
+
+			if (txpc.getNewTxs().size() == 10) {
+				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc));
+				txpc.setNewTxs(new ArrayList<>(10));
+				pl.update(counter, (percent) -> logger.info("Sending full txMemPool: {}", percent));
+			}
+			txpc.getNewTxs().add(entry.getValue());
+			counter++;
+		}
+
+		if (txpc.getNewTxs().size() != 0) {
+			txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc));
+			pl.update(counter, (percent) -> logger.info("Sending full txMemPool: {}", percent));
+		}
+
 	}
 
 	public TxPoolContainer getMemPoolContainer() {
@@ -153,14 +203,6 @@ public class MemPoolRefresherJob implements Job {
 
 	public void setMemPoolChangesFactory(TxPoolChangesFactory memPoolChangesFactory) {
 		this.txPoolChangesFactory = memPoolChangesFactory;
-	}
-
-	public Boolean getSaveDBOnRefresh() {
-		return saveDBOnRefresh;
-	}
-
-	public void setSaveDBOnRefresh(Boolean saveDBOnRefresh) {
-		this.saveDBOnRefresh = saveDBOnRefresh;
 	}
 
 	public TxPoolService getMemPoolService() {
@@ -217,6 +259,14 @@ public class MemPoolRefresherJob implements Job {
 
 	public void setBitcoindClient(BitcoindClient bitcoindClient) {
 		this.bitcoindClient = bitcoindClient;
+	}
+
+	public BitcoindAdapterProperties getBitcoindAdapterProperties() {
+		return bitcoindAdapterProperties;
+	}
+
+	public void setBitcoindAdapterProperties(BitcoindAdapterProperties bitcoindAdapterProperties) {
+		this.bitcoindAdapterProperties = bitcoindAdapterProperties;
 	}
 
 }

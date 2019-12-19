@@ -1,12 +1,9 @@
 package com.mempoolexplorer.bitcoind.adapter.events.sources;
 
-import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResultData;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
+import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 
 public interface TxSource {
 
-	void publishTxChanges(TxPoolChanges txPoolChanges);
+	void publishMemPoolEvent(MempoolEvent memPoolEvent);
 	
-	void publishNewBlock(GetBlockResultData blockResultData);
-
 }

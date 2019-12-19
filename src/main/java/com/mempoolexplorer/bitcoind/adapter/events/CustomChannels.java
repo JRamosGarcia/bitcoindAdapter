@@ -5,7 +5,7 @@ import org.springframework.cloud.stream.annotation.Output;
 import org.springframework.messaging.MessageChannel;
 
 public interface CustomChannels {
-	@Qualifier("txMemPoolChangesChannel")
-	@Output("txMemPoolChanges")
-    MessageChannel txMemPoolChangesChannel();
+	@Qualifier("txMemPoolEventsChannel")
+	@Output("txMemPoolEvents")
+    MessageChannel txMemPoolEventsChannel();
 }

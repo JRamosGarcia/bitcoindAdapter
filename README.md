@@ -6,7 +6,7 @@ bitcoindAdapter uses mainly these bitcoind RPC calls:
   * getrawmempool (verbose) to obtain the mempool, and then for each txInput in each transaction:
   * getRawTransaction (decoded) is called. 
 
-Mempool changes and new blocks are sent through a configurable kafka topic (memPool.tx.changes). Mempool tx changes are guaranteed not to be sent when a new block is mined. That is, if a new block is detected after checking mempool changes, these changes are not sent or stored. They wait for the next refresh round to be sent and stored.
+Mempool changes and new blocks are sent through a configurable kafka topic (memPool.tx.events). Mempool tx changes are guaranteed not to be sent when a new block is mined. That is, if a new block is detected after checking mempool changes, these changes are not sent or stored. They wait for the next refresh round to be sent and stored.
 
 This ensures a message order in which message consumers can store the new block transactions before they are removed from mempool in the next message, enabling consumers to compare mined block txs with mempool txs.  
 

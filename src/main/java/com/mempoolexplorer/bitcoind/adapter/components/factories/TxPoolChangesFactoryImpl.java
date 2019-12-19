@@ -23,6 +23,7 @@ public class TxPoolChangesFactoryImpl implements TxPoolChangesFactory {
 	public TxPoolChanges from(TxPoolDiff txPoolDiff) {
 		TxPoolChanges txPoolChanges = new TxPoolChanges();
 		txPoolChanges.setChangeTime(Instant.now(clock));
+		// First change counter will be 1 since 0 si reserved for (re)start
 		txPoolChanges.setChangeCounter(changeCounter.addAndGet(1));
 		txPoolChanges.setNewTxs(new ArrayList<>(txPoolDiff.getNewMemPool().getFullTxPool().values()));
 		txPoolChanges.setRemovedTxsId(new ArrayList<>(txPoolDiff.getGoneOrMinedMemPool().getTxIdSet()));

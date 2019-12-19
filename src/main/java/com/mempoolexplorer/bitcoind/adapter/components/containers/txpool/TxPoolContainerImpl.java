@@ -7,7 +7,7 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
@@ -37,7 +37,7 @@ public class TxPoolContainerImpl implements TxPoolContainer {
 	}
 
 	@Override
-	public void setTxPool(TxPool txPool) throws MemPoolException {
+	public void setTxPool(TxPool txPool) throws TxPoolException {
 		this.txPool=txPool;
 	}
 

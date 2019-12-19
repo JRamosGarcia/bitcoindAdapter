@@ -29,13 +29,14 @@ import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJob;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
+import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
 
 @Component
@@ -69,7 +70,10 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 	private TxPoolService memPoolService;
 
 	@Autowired
-	private BitcoindAdapterProperties props;
+	private BitcoindAdapterProperties bitcoindAdapterProperties;
+
+	@Autowired
+	private BitcoindProperties bitcoindProperties;
 
 	@Autowired
 	private AppState appState;
@@ -97,15 +101,14 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 		// SpringApplicationBuilder fires multiple notification to that listener (for
 		// every child)
 		// if (event.getApplicationContext().getParent() == null) {
-		// NO funciona lo anterior, haciendo chapuza...
+		// Code above does not work, making tricks...
 		if (applicationReadyEventFirstTime) {
 			applicationReadyEventFirstTime = Boolean.FALSE;
 
-			// TODO Do this process more resilient in case bitcoind is not started.
 			log.info("Initializating bitcoindAdapter Mempool...");
 			try {
 				Optional<TxPoolDiff> memPoolFromDB = Optional.empty();
-				if (props.getLoadDBOnStart()) {
+				if (bitcoindAdapterProperties.getLoadDBOnStart()) {
 					appState.setState(AppStateEnum.LOADINGFROMDB);
 					memPoolFromDB = memPoolService.loadTxPoolFromDB();
 				}
@@ -116,14 +119,15 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 					txPoolContainer.getTxPool().apply(memPoolFromDB.get());
 					loadedFrom = LoadedFrom.FROMDB;
 				} else {
-					log.info("BitcoindAdapter mempool loading from bitcoind client. It will take sometime");
+					log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
+							bitcoindProperties.getHost(), bitcoindProperties.getPort());
 					appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
 					TxPool txPool = inMemTxPoolFiller.createMemPool();
 					txPoolContainer.setTxPool(txPool);
 					loadedFrom = LoadedFrom.FROMCLIENT;
 				}
 				// It's a nonsense save in DB whatever you have just loaded.
-				if (props.getSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
+				if (bitcoindAdapterProperties.getSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
 					log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
 					// TODO: maybe this takes too long and db connection closes after timeout
 					appState.setState(AppStateEnum.SAVINGTODB);
@@ -137,10 +141,12 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 
 				log.info("BitcoindAdapter mempool initializated.");
 				startJob();
-			} catch (MemPoolException e) {
-				log.error("Exception creating initial memPool: ", e);
+			} catch (TxPoolException e) {
+				// log.error("Exception creating initial memPool: ", e);
+				throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
 			} catch (SchedulerException e) {
-				log.error("Exception Starting scheduler: ", e);
+				// log.error("Exception Starting scheduler: ", e);
+				throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
 			}
 		}
 
@@ -153,7 +159,7 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 		jobDataMap.put("memPoolContainer", txPoolContainer);
 		jobDataMap.put("lastBlocksContainer", lastBlocksContainer);
 		jobDataMap.put("memPoolChangesContainer", txPoolChangesContainer);
-		jobDataMap.put("saveDBOnRefresh", props.getSaveDBOnRefresh());
+		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
 		jobDataMap.put("memPoolService", memPoolService);
 		jobDataMap.put("blockFactory", blockFactory);
 		jobDataMap.put("memPoolChangesFactory", txPoolChangesFactory);
@@ -164,7 +170,7 @@ public class AppLifeCycle /* implements ApplicationListener<ApplicationEvent> */
 		JobDetail job = newJob(MemPoolRefresherJob.class).withIdentity("refreshJob", "mempool").setJobData(jobDataMap)
 				.build();
 		Trigger trigger = newTrigger().withIdentity("refreshTrigger", "mempool").startNow()
-				.withSchedule(simpleSchedule().withIntervalInSeconds(props.getRefreshIntervalSec())
+				.withSchedule(simpleSchedule().withIntervalInSeconds(bitcoindAdapterProperties.getRefreshIntervalSec())
 						.withMisfireHandlingInstructionNowWithRemainingCount().repeatForever())
 				.build();
 

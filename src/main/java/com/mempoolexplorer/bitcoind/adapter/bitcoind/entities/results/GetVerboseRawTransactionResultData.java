@@ -10,7 +10,7 @@ public class GetVerboseRawTransactionResultData {
 	private Integer size;// The serialized transaction size
 	private Integer vsize;// The virtual transaction size (differs from size for witness transactions)
 	private Integer version;// The version
-	private Integer locktime;// The lock time
+	private Long locktime;// The lock time
 	private List<GetVerboseRawTransactionInput> vin;// Transaction input vector
 	private List<GetVerboseRawTransactionOutput> vout;// Transaction output vector
 	private String blockhash;// (optional)If the transaction has been included in a block on the local best
@@ -69,11 +69,11 @@ public class GetVerboseRawTransactionResultData {
 		this.version = version;
 	}
 
-	public Integer getLocktime() {
+	public Long getLocktime() {
 		return locktime;
 	}
 
-	public void setLocktime(Integer locktime) {
+	public void setLocktime(Long locktime) {
 		this.locktime = locktime;
 	}
 

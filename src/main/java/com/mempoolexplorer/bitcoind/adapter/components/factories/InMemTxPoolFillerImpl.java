@@ -22,7 +22,7 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemP
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResult;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.MemPoolException;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.utils.TransactionFactory;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxInput;
@@ -65,13 +65,13 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	 */
 	@Override
 	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
-	public TxPool createMemPool() throws MemPoolException {
+	public TxPool createMemPool() throws TxPoolException {
 		try {
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
 
 			if (null != rawMemPoolVerbose.getError()) {
 				// We can't recover from this error.
-				throw new MemPoolException("Error, getRawMemPoolVerbose returned error: " + rawMemPoolVerbose.getError()
+				throw new TxPoolException("Error, getRawMemPoolVerbose returned error: " + rawMemPoolVerbose.getError()
 						+ ", requestId: " + rawMemPoolVerbose.getId());
 			}
 
@@ -79,21 +79,22 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 					rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap().size());
 			ConcurrentHashMap<String, Transaction> txIdToTxMap = createTxIdToTxMapFrom(
 					rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap());
-			addAddressesAndAmountData(txIdToTxMap);
+			addAdditionalData(txIdToTxMap);
 
 			return new InMemoryTxPoolImp(txIdToTxMap);
 		} catch (ResourceAccessException e) {
-			throw new MemPoolException("Error: Can't connect to bitcoindClient", e);
+			throw new TxPoolException("Error: Can't connect to bitcoindClient", e);
 		}
 	}
 
 	@Override
 	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_REFRESH_TIME)
-	public TxPoolDiff obtainMemPoolDiffs(TxPool txPool) throws MemPoolException {
+	public TxPoolDiff obtainMemPoolDiffs(TxPool txPool) throws TxPoolException {
 		try {
 			Set<String> myMemPoolKeySet = txPool.getFullTxPool().keySet();
 
-			//TODO: Aqui deberíamos usar getmempool sin verbose y luego preguntar por los que faltan, si no esto va a tardar mucho cuando el mempool sea grande
+			// TODO: Aqui deberíamos usar getmempool sin verbose y luego preguntar por los
+			// que faltan, si no esto va a tardar mucho cuando el mempool sea grande
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
 			logger.debug(
 					"refreshing mempool bitcoindClient.getRawMemPoolVerbose() returned a mempool with {} transactions",
@@ -101,7 +102,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 			if (null != rawMemPoolVerbose.getError()) {
 				// We can't recover from this error.
-				throw new MemPoolException("Error, getRawMemPoolVerbose returned error: " + rawMemPoolVerbose.getError()
+				throw new TxPoolException("Error, getRawMemPoolVerbose returned error: " + rawMemPoolVerbose.getError()
 						+ ", requestId: " + rawMemPoolVerbose.getId());
 			}
 
@@ -128,7 +129,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			// Add additional data (addresses and amounts) to new transactions and create
 			// addr->List<TxIds> map.
 			ConcurrentHashMap<String, Transaction> newTxIdToTxMap = createTxIdToTxMapFrom(newRawMemPoolVerboseDataMap);
-			addAddressesAndAmountData(newTxIdToTxMap);
+			addAdditionalData(newTxIdToTxMap);
 
 			InMemoryTxPoolImp newMemPool = new InMemoryTxPoolImp(newTxIdToTxMap/* , addrIdToTxIdsMap */);
 
@@ -136,7 +137,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 			return new TxPoolDiff(goneOrMinedMemPool, newMemPool);
 		} catch (ResourceAccessException e) {
-			throw new MemPoolException("Error: Can't connect to bitcoindClient", e);
+			throw new TxPoolException("Error: Can't connect to bitcoindClient", e);
 		}
 	}
 
@@ -150,7 +151,12 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		return txIdToTxMap;
 	}
 
-	private void addAddressesAndAmountData(Map<String, Transaction> txIdToTxMap) {
+	/**
+	 * Adds addresses, amount Data and hex raw data to each transaction in the
+	 * transacion map.
+	 * @param txIdToTxMap
+	 */
+	private void addAdditionalData(Map<String, Transaction> txIdToTxMap) {
 
 		// If a mempool transaction is dumped beetween bitcoind RPC calls, the
 		// transaction is removed from map.
@@ -166,7 +172,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			if (null == rawTx.getError()) {
 				// Add more data via getRawTransaction, be aware more txIds can be added to
 				// withErrorTxIdSet
-				addAddressesAndAmountData(rawTx, entry.getValue(), withErrorTxIdSet);
+				addAdditionalData(rawTx, entry.getValue(), withErrorTxIdSet);
 			} else {
 				String withErrorTxId = entry.getKey();
 				withErrorTxIdSet.add(entry.getKey());
@@ -200,8 +206,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Validate.notNull(tx.getFees().getModified(), "Fees.modified can't be null");
 		Validate.notNull(tx.getFees().getAncestor(), "Fees.ancestor can't be null");
 		Validate.notNull(tx.getFees().getDescendant(), "Fees.descendant can't be null");
-		
-		
+
 		Validate.notEmpty(tx.getTxInputs(), "txInputs can't be empty");
 		Validate.notEmpty(tx.getTxOutputs(), "txOutputs can't be empty");
 
@@ -216,9 +221,18 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 	}
 
-	private void addAddressesAndAmountData(GetVerboseRawTransactionResult rawTx, Transaction tx,
+	/**
+	 * Add more data via getRawTransaction (addresses, amount data and raw Tx in hexadecimal format)
+	 * @param rawTx rawTransaction obtained from getRawTransaction RPC
+	 * @param tx transaction to be filled
+	 * @param withErrorTxIdSet tx deleted for bitcoind RPC race conditions
+	 */
+	private void addAdditionalData(GetVerboseRawTransactionResult rawTx, Transaction tx,
 			Set<String> withErrorTxIdSet) {
 
+		// Add raw tx in hex
+		tx.setHex(rawTx.getGetRawTransactionResultData().getHex());
+		
 		// Add Txoutputs to transaccions
 		rawTx.getGetRawTransactionResultData().getVout().stream().forEach(output -> {
 			// JSON preserves order. http://www.rfc-editor.org/rfc/rfc7159.txt

@@ -5,7 +5,7 @@ FROM openjdk:8-jdk-alpine
 #    curl \
 #    && rm -rf /var/cache/apk/*
 
-VOLUME /tmp
+#VOLUME /tmp
 
 #Opcion funciona con linea de comandos
 #COPY build/libs/bitcoindAdapter-0.0.1-SNAPSHOT.jar app.jar

@@ -49,15 +49,13 @@ public class BitcoindAdapterApplication {
 		// Application really begins to work in class {@code AppLifeCycle}
 	}
 
-	private static boolean containsProfilesActiveArgument(List<String> jvmArgs) {
-		for (String arg : jvmArgs) {
-			if (arg.startsWith("-Dspring.profiles.active")) {
-				return true;
-			}
-		}
-		return false;
-	}
-
+	/*
+	 * private static boolean containsProfilesActiveArgument(List<String> jvmArgs) {
+	 * for (String arg : jvmArgs) { if (arg.startsWith("-Dspring.profiles.active"))
+	 * { return true; } } return false; }
+	 */
+	
+	
 	@Bean
 	public RestTemplate getBitcoindClient(RestTemplateBuilder restTemplateBuilder)
 			throws NumberFormatException, URISyntaxException {
