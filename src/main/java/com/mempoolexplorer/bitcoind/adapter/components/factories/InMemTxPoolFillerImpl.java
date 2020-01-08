@@ -163,6 +163,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Set<String> withErrorTxIdSet = new HashSet<>();
 
 		final AtomicInteger count = new AtomicInteger();
+		//TODO: Estudiar meter un parallel aqui.
 		txIdToTxMap.entrySet().stream().forEach(entry -> {
 			GetVerboseRawTransactionResult rawTx = bitcoindClient.getVerboseRawTransaction(entry.getKey());
 

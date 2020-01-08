@@ -62,7 +62,7 @@ Decides if bitcoindAdapter must save mempool when fully loaded and updated at st
 Saves mempool changes in db for each mempool refresh the application does.
 
 * `bitcoindadapter.maxMemPoolSizeReturnedInTxNumber=300`
-REST API `/memPool/full`  returns all mempool, if tx number in mempool is above this number a http 413 error, "Payload Too Large" is returned. `/memPool/full` is used mainly in `testNet`
+REST API `/memPool/full`  returns all mempool, if tx number in mempool is above this number a http 413 error, "Payload Too Large" is returned. A value of 0 means unlimited (return full mempool always). 
 
 * `bitcoindadapter.memPoolChangesSize=10`
 REST API `/memPool/changes` returns last 10 changes in memPool.

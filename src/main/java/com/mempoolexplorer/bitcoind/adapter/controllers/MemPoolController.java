@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mempoolexplorer.bitcoind.adapter.components.AppState;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.controllers.errors.ErrorDetails;
@@ -24,7 +23,6 @@ import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.MemPoolSizeTo
 import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.TransactionNotFoundInMemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
-import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 
@@ -38,7 +36,6 @@ public class MemPoolController {
 	@Autowired
 	private TxPoolContainer memPoolContainer;
 
-	
 	@Autowired
 	private TxPoolChangesContainer memPoolChangesContainer;
 
@@ -72,7 +69,8 @@ public class MemPoolController {
 	@GetMapping("/full")
 	public Map<String, Transaction> getFullMemPool() throws MemPoolSizeTooBigException {
 		int memPoolSize = memPoolContainer.getTxPool().getSize();
-		if (memPoolSize > properties.getMaxMemPoolSizeReturnedInTxNumber()) {
+		if ((memPoolSize > properties.getMaxMemPoolSizeReturnedInTxNumber())
+				&& (properties.getMaxMemPoolSizeReturnedInTxNumber() != 0)) {//0 means unlimited
 			throw new MemPoolSizeTooBigException("MemPool is too big to be returned", memPoolSize);
 		}
 		return memPoolContainer.getTxPool().getFullTxPool();
