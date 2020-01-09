@@ -2,11 +2,14 @@ package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
 
 public class GetMemPoolInfoData {
 
-	private Integer size; // The number of transactions currently in the memory pool
-	private Integer bytes; // The total number of bytes in the transactions in the memory pool
+	private Integer size; // Current tx count
+	private Integer bytes; // Sum of all virtual transaction sizes as defined in BIP 141. Differs from
+							// actual serialized size because witness data is discounted
 	private Integer usage; // Total memory usage for the mempool in bytes
 	private Integer maxmempool; // Maximum memory usage for the mempool in bytes
-	private Integer mempoolminfee; // The lowest fee per kilobyte paid by any transaction in the memory pool
+	private Integer mempoolminfee; // Minimum fee rate in BTC/kB for tx to be accepted. Is the maximum of
+									// minrelaytxfee and minimum mempool fee
+	private Integer minrelaytxfee; // Current minimum relay fee for transaction
 
 	public Integer getSize() {
 		return size;
@@ -48,6 +51,14 @@ public class GetMemPoolInfoData {
 		this.mempoolminfee = mempoolminfee;
 	}
 
+	public Integer getMinrelaytxfee() {
+		return minrelaytxfee;
+	}
+
+	public void setMinrelaytxfee(Integer minrelaytxfee) {
+		this.minrelaytxfee = minrelaytxfee;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -61,6 +72,8 @@ public class GetMemPoolInfoData {
 		builder.append(maxmempool);
 		builder.append(", mempoolminfee=");
 		builder.append(mempoolminfee);
+		builder.append(", minrelaytxfee=");
+		builder.append(minrelaytxfee);
 		builder.append("]");
 		return builder.toString();
 	}

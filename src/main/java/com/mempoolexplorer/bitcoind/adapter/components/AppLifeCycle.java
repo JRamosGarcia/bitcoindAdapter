@@ -113,8 +113,8 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	public void OnBindingCreatedEvent(BindingCreatedEvent event) {
 		@SuppressWarnings("unchecked")
 		Binding<Object> binding = (Binding<Object>) event.getSource();
-		//Checks that event.source is the same as our kafka topic
-		if(binding.getName().compareTo(topic)==0) {
+		// Checks that event.source is the same as our kafka topic
+		if (binding.getName().compareTo(topic) == 0) {
 			onBindingCreatedEvent = true;
 			checkInitialization();
 		}
@@ -224,9 +224,9 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	// Just for debug.
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
-		String str = event.toString();
-		if (str.contains("kafka") || str.contains("cloud")) {
-			log.info("ApplicationEvent: " + event.toString());
-		}
+//		String str = event.toString();
+//		if (str.contains("kafka") || str.contains("cloud")) {
+//			log.info("ApplicationEvent: " + event.toString());
+//		}
 	}
 }

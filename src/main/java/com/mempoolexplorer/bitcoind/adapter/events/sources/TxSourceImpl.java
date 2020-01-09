@@ -6,8 +6,6 @@ import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 
-import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResultData;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.CustomChannels;
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 

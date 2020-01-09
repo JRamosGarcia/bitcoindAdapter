@@ -101,7 +101,8 @@ public class MemPoolRefresherJob implements Job {
 
 	private void refreshMempoolAndSendChanges() throws TxPoolException {
 		Integer blockNumbefore = bitcoindClient.getBlockCount();
-		TxPoolDiff txPoolDiff = txPoolFiller.obtainMemPoolDiffs(memPoolContainer.getTxPool());
+		TxPoolDiff txPoolDiff = txPoolFiller.obtainMemPoolDiffs(memPoolContainer.getTxPool(),
+				bitcoindAdapterProperties.getUseGetRawMemPool());
 		Integer blockNumAfter = bitcoindClient.getBlockCount();
 
 		if (blockNumbefore.compareTo(blockNumAfter) != 0) {

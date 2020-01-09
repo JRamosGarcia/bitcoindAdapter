@@ -14,6 +14,7 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockCo
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockHashResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTemplateResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolEntry;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerbose;
@@ -118,4 +119,16 @@ public class BitcoindClientImpl implements BitcoindClient {
 		return restTemplate.postForObject("/", objectParams, GetBlockResult.class);
 	}
 
+	@Override
+	public GetMemPoolEntry getMempoolEntry(String txId) {
+		ObjectArrayParamRequest objectParams = new ObjectArrayParamRequest();
+
+		objectParams.setId("10");
+		objectParams.setMethod("getmempoolentry");
+		List<Object> params = new ArrayList<>();
+		params.add(txId);
+		objectParams.setParams(params);
+
+		return restTemplate.postForObject("/", objectParams, GetMemPoolEntry.class);
+	}
 }

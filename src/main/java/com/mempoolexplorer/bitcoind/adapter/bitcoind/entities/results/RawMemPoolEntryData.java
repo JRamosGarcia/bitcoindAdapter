@@ -2,7 +2,7 @@ package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
 
 import java.util.List;
 
-public class GetRawMemPoolVerboseData {
+public class RawMemPoolEntryData {
 
 	private Integer size;// virtual transaction size as defined in BIP 141. 
 						//This is different from actual serialized size for witness transactions as witness data is discounted.
@@ -19,7 +19,7 @@ public class GetRawMemPoolVerboseData {
 									// this transaction can be added to a block, although all transactions may be
 									// included in the same block. The array may be empty
 
-	public GetRawMemPoolVerboseData() {
+	public RawMemPoolEntryData() {
 		super();
 	}
 

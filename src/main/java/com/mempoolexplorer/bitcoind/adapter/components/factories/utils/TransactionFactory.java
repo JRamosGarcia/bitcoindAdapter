@@ -1,13 +1,13 @@
 package com.mempoolexplorer.bitcoind.adapter.components.factories.utils;
 
-import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerboseData;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.RawMemPoolEntryData;
 import com.mempoolexplorer.bitcoind.adapter.entities.Fees;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 
 public class TransactionFactory {
 
-	public static Transaction from(String txId, GetRawMemPoolVerboseData getRawMemPoolVerboseData) {
+	public static Transaction from(String txId, RawMemPoolEntryData getRawMemPoolVerboseData) {
 
 		Transaction tx = new Transaction();
 		tx.setTxId(txId);

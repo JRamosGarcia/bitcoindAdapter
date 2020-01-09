@@ -7,25 +7,30 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class GetRawMemPoolVerbose extends BitcoindResult {
 
 	@JsonProperty("result")
-	private Map<String, GetRawMemPoolVerboseData> getRawMemPoolVerboseDataMap;
+	private Map<String, RawMemPoolEntryData> rawMemPoolEntryDataMap;
 
 	public GetRawMemPoolVerbose() {
 		super();
 	}
 
-	public Map<String, GetRawMemPoolVerboseData> getGetRawMemPoolVerboseDataMap() {
-		return getRawMemPoolVerboseDataMap;
+	public Map<String, RawMemPoolEntryData> getRawMemPoolEntryDataMap() {
+		return rawMemPoolEntryDataMap;
 	}
 
-	public void setGetRawMemPoolVerboseDataMap(Map<String, GetRawMemPoolVerboseData> getRawMemPoolVerboseDataMap) {
-		this.getRawMemPoolVerboseDataMap = getRawMemPoolVerboseDataMap;
+	public void setRawMemPoolEntryDataMap(Map<String, RawMemPoolEntryData> rawMemPoolEntryDataMap) {
+		this.rawMemPoolEntryDataMap = rawMemPoolEntryDataMap;
 	}
 
 	@Override
 	public String toString() {
-		return "GetRawMemPoolVerbose [getRawMemPoolVerboseDataMap=" + getRawMemPoolVerboseDataMap + ", getError()="
-				+ getError() + ", getId()=" + getId() + "]";
+		StringBuilder builder = new StringBuilder();
+		builder.append("GetRawMemPoolVerbose [rawMemPoolEntryDataMap=");
+		builder.append(rawMemPoolEntryDataMap);
+		builder.append("]");
+		return builder.toString();
 	}
+
+
 
 
 

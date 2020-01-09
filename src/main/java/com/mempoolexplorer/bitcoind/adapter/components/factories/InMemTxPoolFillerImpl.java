@@ -1,12 +1,14 @@
 package com.mempoolexplorer.bitcoind.adapter.components.factories;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
@@ -17,10 +19,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.BitcoindError;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerbose;
-import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerboseData;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.RawMemPoolEntryData;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.utils.TransactionFactory;
@@ -33,6 +38,7 @@ import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
 import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
+import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
 @Component
 public class InMemTxPoolFillerImpl implements TxPoolFiller {
@@ -52,7 +58,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		return oldTx;
 	};
 	// getDepends is the content we use because it's the most distinguishable
-	final BinaryOperator<GetRawMemPoolVerboseData> rawMemPoolVerboseDataMergeFuncion = (oldTx, newTx) -> {
+	final BinaryOperator<RawMemPoolEntryData> rawMemPoolVerboseDataMergeFuncion = (oldTx, newTx) -> {
 		logger.error("duplicated txId: {}, this shouldn't be happening", newTx.getDepends());
 		return oldTx;
 	};
@@ -67,6 +73,9 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
 	public TxPool createMemPool() throws TxPoolException {
 		try {
+			GetMemPoolInfo memPoolInfo = bitcoindClient.getMemPoolInfo();
+			logger.info("Bitcoind node has {} tx in his mempoool, loading...",
+					memPoolInfo.getGetMemPoolInfoData().getSize());
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
 
 			if (null != rawMemPoolVerbose.getError()) {
@@ -76,10 +85,10 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			}
 
 			logger.debug("creating initial mempool bitcoindClient.getRawMemPoolVerbose() returned a mempool with {}",
-					rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap().size());
+					rawMemPoolVerbose.getRawMemPoolEntryDataMap().size());
 			ConcurrentHashMap<String, Transaction> txIdToTxMap = createTxIdToTxMapFrom(
-					rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap());
-			addAdditionalData(txIdToTxMap);
+					rawMemPoolVerbose.getRawMemPoolEntryDataMap());
+			addAdditionalData(txIdToTxMap, true);
 
 			return new InMemoryTxPoolImp(txIdToTxMap);
 		} catch (ResourceAccessException e) {
@@ -89,51 +98,38 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 	@Override
 	@ProfileTime(metricName = ProfileMetricNames.MEMPOOL_REFRESH_TIME)
-	public TxPoolDiff obtainMemPoolDiffs(TxPool txPool) throws TxPoolException {
+	public TxPoolDiff obtainMemPoolDiffs(TxPool txPool, boolean useRaw) throws TxPoolException {
+		Instant start = Instant.now();
+		TxPoolDiff txpd;
+		if (useRaw) {
+			txpd = obtainMemPoolDiffsRaw(txPool);
+		} else {
+			txpd = obtainMemPoolDiffsNonRaw(txPool);
+		}
+		Instant end = Instant.now();
+		Duration duration = Duration.between(start, end);
+		logger.info("Diff ha tardado: {}", duration.toString());
+		return txpd;
+	}
+
+	private TxPoolDiff obtainMemPoolDiffsRaw(TxPool txPool) throws TxPoolException {
 		try {
 			Set<String> myMemPoolKeySet = txPool.getFullTxPool().keySet();
-
-			// TODO: Aqui deberíamos usar getmempool sin verbose y luego preguntar por los
-			// que faltan, si no esto va a tardar mucho cuando el mempool sea grande
 			GetRawMemPoolVerbose rawMemPoolVerbose = bitcoindClient.getRawMemPoolVerbose();
-			logger.debug(
-					"refreshing mempool bitcoindClient.getRawMemPoolVerbose() returned a mempool with {} transactions",
-					rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap().size());
 
-			if (null != rawMemPoolVerbose.getError()) {
-				// We can't recover from this error.
-				throw new TxPoolException("Error, getRawMemPoolVerbose returned error: " + rawMemPoolVerbose.getError()
-						+ ", requestId: " + rawMemPoolVerbose.getId());
-			}
+			logIfErrors("getRawMemPoolVerbose", rawMemPoolVerbose.getRawMemPoolEntryDataMap().size(),
+					rawMemPoolVerbose.getError());
 
-			Set<String> inNetMemPoolKeySet = rawMemPoolVerbose.getGetRawMemPoolVerboseDataMap().keySet();
-
-			// Mined or deleted transactions are obtained by substracting on-net
-			// transactions to our current transaction set. Normally a minedBlock.
-			ConcurrentHashMap<String, Transaction> goneOrMinedTxIdToTxMap = txPool.getFullTxPool().entrySet().stream()
-					.filter(entry -> !inNetMemPoolKeySet.contains(entry.getKey())).collect(Collectors
-							.toMap(Entry::getKey, Entry::getValue, mergeFunction, () -> new ConcurrentHashMap<>()));
-
-			InMemoryTxPoolImp goneOrMinedMemPool = new InMemoryTxPoolImp(
-					goneOrMinedTxIdToTxMap/* , addrIdToTxIdsMap */);
-
-			logger.debug("There are {} transactions mined or gone", goneOrMinedMemPool.getFullTxPool().size());
-
+			Set<String> inNetMemPoolKeySet = rawMemPoolVerbose.getRawMemPoolEntryDataMap().keySet();
+			InMemoryTxPoolImp goneOrMinedMemPool = calculateGoneOrMinedMemPool(txPool, inNetMemPoolKeySet);
 			// New transactions are obtained substracting our transaction set to on-net
 			// transactions.
-			Map<String, GetRawMemPoolVerboseData> newRawMemPoolVerboseDataMap = rawMemPoolVerbose
-					.getGetRawMemPoolVerboseDataMap().entrySet().stream()
-					.filter(entry -> !myMemPoolKeySet.contains(entry.getKey())).collect(Collectors.toMap(Entry::getKey,
-							Entry::getValue, rawMemPoolVerboseDataMergeFuncion, () -> new HashMap<>()));
+			Map<String, RawMemPoolEntryData> newRawMemPoolVerboseDataMap = rawMemPoolVerbose.getRawMemPoolEntryDataMap()
+					.entrySet().stream().filter(entry -> !myMemPoolKeySet.contains(entry.getKey()))
+					.collect(Collectors.toMap(Entry::getKey, Entry::getValue, rawMemPoolVerboseDataMergeFuncion,
+							() -> new HashMap<>()));
 
-			// Add additional data (addresses and amounts) to new transactions and create
-			// addr->List<TxIds> map.
-			ConcurrentHashMap<String, Transaction> newTxIdToTxMap = createTxIdToTxMapFrom(newRawMemPoolVerboseDataMap);
-			addAdditionalData(newTxIdToTxMap);
-
-			InMemoryTxPoolImp newMemPool = new InMemoryTxPoolImp(newTxIdToTxMap/* , addrIdToTxIdsMap */);
-
-			logger.debug("There are {} new transactions in memPool", newMemPool.getFullTxPool().size());
+			InMemoryTxPoolImp newMemPool = calculateNewMemPool(newRawMemPoolVerboseDataMap);
 
 			return new TxPoolDiff(goneOrMinedMemPool, newMemPool);
 		} catch (ResourceAccessException e) {
@@ -141,8 +137,69 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		}
 	}
 
+	private TxPoolDiff obtainMemPoolDiffsNonRaw(TxPool txPool) throws TxPoolException {
+		try {
+			Set<String> myMemPoolKeySet = txPool.getFullTxPool().keySet();
+			GetRawMemPoolNonVerbose rawMemPoolNonVerbose = bitcoindClient.getRawMemPoolNonVerbose();
+
+			logIfErrors("getRawMemPoolNonVerbose", rawMemPoolNonVerbose.getTrxHashList().size(),
+					rawMemPoolNonVerbose.getError());
+
+			Set<String> inNetMemPoolKeySet = new HashSet<>(rawMemPoolNonVerbose.getTrxHashList());
+			InMemoryTxPoolImp goneOrMinedMemPool = calculateGoneOrMinedMemPool(txPool, inNetMemPoolKeySet);
+			// New transactions are obtained substracting our transaction set to on-net
+			// transactions.
+			Map<String, RawMemPoolEntryData> newRawMemPoolVerboseDataMap = rawMemPoolNonVerbose.getTrxHashList()
+					.stream().filter(txId -> !myMemPoolKeySet.contains(txId))
+					.collect(Collectors.toMap(txId -> txId,
+							txId -> bitcoindClient.getMempoolEntry(txId).getRawMemPoolEntryData(),
+							rawMemPoolVerboseDataMergeFuncion, () -> new HashMap<>()));
+
+			InMemoryTxPoolImp newMemPool = calculateNewMemPool(newRawMemPoolVerboseDataMap);
+
+			return new TxPoolDiff(goneOrMinedMemPool, newMemPool);
+		} catch (ResourceAccessException e) {
+			throw new TxPoolException("Error: Can't connect to bitcoindClient", e);
+		}
+	}
+
+	private void logIfErrors(String methodCalled, int memPoolSize, BitcoindError error) throws TxPoolException {
+		logger.debug("refreshing mempool bitcoindClient.{}() returned a mempool with {} transactions", methodCalled,
+				memPoolSize);
+
+		if (null != error) {
+			// We can't recover from this error.
+			throw new TxPoolException("Error, getRawMemPoolVerbose returned error: " + error);
+		}
+	}
+
+	private InMemoryTxPoolImp calculateGoneOrMinedMemPool(TxPool txPool, Set<String> inNetMemPoolKeySet) {
+		// Mined or deleted transactions are obtained by substracting on-net
+		// transactions to our current transaction set. Normally a minedBlock.
+		ConcurrentHashMap<String, Transaction> goneOrMinedTxIdToTxMap = txPool.getFullTxPool().entrySet().stream()
+				.filter(entry -> !inNetMemPoolKeySet.contains(entry.getKey())).collect(Collectors.toMap(Entry::getKey,
+						Entry::getValue, mergeFunction, () -> new ConcurrentHashMap<>()));
+
+		InMemoryTxPoolImp goneOrMinedMemPool = new InMemoryTxPoolImp(goneOrMinedTxIdToTxMap/* , addrIdToTxIdsMap */);
+		logger.debug("There are {} transactions mined or gone", goneOrMinedMemPool.getFullTxPool().size());
+
+		return goneOrMinedMemPool;
+	}
+
+	private InMemoryTxPoolImp calculateNewMemPool(Map<String, RawMemPoolEntryData> newRawMemPoolVerboseDataMap) {
+		// Add additional data (addresses and amounts) to new transactions and create
+		// addr->List<TxIds> map.
+		ConcurrentHashMap<String, Transaction> newTxIdToTxMap = createTxIdToTxMapFrom(newRawMemPoolVerboseDataMap);
+		addAdditionalData(newTxIdToTxMap, false);
+
+		InMemoryTxPoolImp newMemPool = new InMemoryTxPoolImp(newTxIdToTxMap/* , addrIdToTxIdsMap */);
+
+		logger.debug("There are {} new transactions in memPool", newMemPool.getFullTxPool().size());
+		return newMemPool;
+	}
+
 	private ConcurrentHashMap<String, Transaction> createTxIdToTxMapFrom(
-			Map<String, GetRawMemPoolVerboseData> rawMemPoolVerboseDataMap) {
+			Map<String, RawMemPoolEntryData> rawMemPoolVerboseDataMap) {
 
 		ConcurrentHashMap<String, Transaction> txIdToTxMap = rawMemPoolVerboseDataMap.entrySet().stream()
 				.map((entry) -> TransactionFactory.from(entry.getKey(), entry.getValue())).collect(Collectors.toMap(
@@ -154,22 +211,32 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	/**
 	 * Adds addresses, amount Data and hex raw data to each transaction in the
 	 * transacion map.
+	 * 
 	 * @param txIdToTxMap
 	 */
-	private void addAdditionalData(Map<String, Transaction> txIdToTxMap) {
+	private void addAdditionalData(Map<String, Transaction> txIdToTxMap, boolean logIt) {
 
 		// If a mempool transaction is dumped beetween bitcoind RPC calls, the
 		// transaction is removed from map.
 		Set<String> withErrorTxIdSet = new HashSet<>();
 
-		final AtomicInteger count = new AtomicInteger();
-		//TODO: Estudiar meter un parallel aqui.
-		txIdToTxMap.entrySet().stream().forEach(entry -> {
+		int count = 0;
+		PercentLog pl = new PercentLog(txIdToTxMap.size());
+
+		// There is no gain making this parallel via java 8 parallelStream due to:
+		// https://bitcoin.stackexchange.com/questions/89066/how-to-scale-json-rpc
+		// Also: I've tested it
+		Iterator<Entry<String, Transaction>> it = txIdToTxMap.entrySet().iterator();
+
+		while (it.hasNext()) {
+			Entry<String, Transaction> entry = it.next();
+
 			GetVerboseRawTransactionResult rawTx = bitcoindClient.getVerboseRawTransaction(entry.getKey());
 
-			int i = count.incrementAndGet();
-			logger.debug("Obtained tx number: {} rawTx: {}", i, entry.getKey());
-
+			logger.debug("Obtained tx number: {} rawTx: {}", count, entry.getKey());
+			if (logIt) {
+				pl.update(count, (percent) -> logger.info("adding additional data to txs... {}", percent));
+			}
 			if (null == rawTx.getError()) {
 				// Add more data via getRawTransaction, be aware more txIds can be added to
 				// withErrorTxIdSet
@@ -179,7 +246,9 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 				withErrorTxIdSet.add(entry.getKey());
 				logWarnOnTransactionWithError(rawTx, withErrorTxId);
 			}
-		});
+			count++;
+		}
+
 		// Delete all transactions which all data could't be obtained.
 		String log = new String();
 		if (!withErrorTxIdSet.isEmpty()) {
@@ -223,17 +292,18 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	}
 
 	/**
-	 * Add more data via getRawTransaction (addresses, amount data and raw Tx in hexadecimal format)
-	 * @param rawTx rawTransaction obtained from getRawTransaction RPC
-	 * @param tx transaction to be filled
+	 * Add more data via getRawTransaction (addresses, amount data and raw Tx in
+	 * hexadecimal format)
+	 * 
+	 * @param rawTx            rawTransaction obtained from getRawTransaction RPC
+	 * @param tx               transaction to be filled
 	 * @param withErrorTxIdSet tx deleted for bitcoind RPC race conditions
 	 */
-	private void addAdditionalData(GetVerboseRawTransactionResult rawTx, Transaction tx,
-			Set<String> withErrorTxIdSet) {
+	private void addAdditionalData(GetVerboseRawTransactionResult rawTx, Transaction tx, Set<String> withErrorTxIdSet) {
 
 		// Add raw tx in hex
 		tx.setHex(rawTx.getGetRawTransactionResultData().getHex());
-		
+
 		// Add Txoutputs to transaccions
 		rawTx.getGetRawTransactionResultData().getVout().stream().forEach(output -> {
 			// JSON preserves order. http://www.rfc-editor.org/rfc/rfc7159.txt

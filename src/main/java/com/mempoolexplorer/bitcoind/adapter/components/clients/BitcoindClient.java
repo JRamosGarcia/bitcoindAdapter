@@ -2,6 +2,7 @@ package com.mempoolexplorer.bitcoind.adapter.components.clients;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTemplateResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolEntry;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerbose;
@@ -12,6 +13,8 @@ public interface BitcoindClient {
 	GetRawMemPoolNonVerbose getRawMemPoolNonVerbose();
 
 	GetRawMemPoolVerbose getRawMemPoolVerbose();
+	
+	GetMemPoolEntry getMempoolEntry(String txId);
 
 	GetBlockTemplateResult getBlockTemplateResult();
 
