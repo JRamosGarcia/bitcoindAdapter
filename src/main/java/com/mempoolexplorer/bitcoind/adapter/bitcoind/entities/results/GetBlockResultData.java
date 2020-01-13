@@ -6,6 +6,7 @@ public class GetBlockResultData {
 
 	private String hash;
 	private Integer height;
+	private Integer weight;// up to 4 million (sum of vByte*4)
 	private Long time;// Set by miners, can be in the future!
 	private Long mediantime;// Always increases with block height
 	private List<String> tx;
@@ -24,6 +25,14 @@ public class GetBlockResultData {
 
 	public void setHeight(Integer height) {
 		this.height = height;
+	}
+
+	public Integer getWeight() {
+		return weight;
+	}
+
+	public void setWeight(Integer weight) {
+		this.weight = weight;
 	}
 
 	public Long getTime() {
@@ -57,6 +66,8 @@ public class GetBlockResultData {
 		builder.append(hash);
 		builder.append(", height=");
 		builder.append(height);
+		builder.append(", weight=");
+		builder.append(weight);
 		builder.append(", time=");
 		builder.append(time);
 		builder.append(", mediantime=");
