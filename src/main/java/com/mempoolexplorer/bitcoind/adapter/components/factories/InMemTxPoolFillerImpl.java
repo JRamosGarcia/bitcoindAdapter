@@ -280,6 +280,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Validate.notEmpty(tx.getTxInputs(), "txInputs can't be empty");
 		Validate.notEmpty(tx.getTxOutputs(), "txOutputs can't be empty");
 
+		Validate.notEmpty(tx.getHex(), "Hex can't be empty");
 		// tx.getTxInputs // We don't validate for not nulls since all fields can be
 		// null if it's a coinbase transaction.
 
@@ -333,6 +334,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 				txInput.setAmount(JSONUtils.JSONtoAmount(spentTxOutput.getValue()));
 				txInput.setTxId(input.getTxid());
 				txInput.setvOutIndex(input.getVout());
+				txInput.setCoinbase(input.getCoinbase());
 
 				// No need to sort data here.
 				tx.getTxInputs().add(txInput);

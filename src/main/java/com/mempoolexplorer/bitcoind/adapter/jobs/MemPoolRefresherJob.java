@@ -3,8 +3,10 @@ package com.mempoolexplorer.bitcoind.adapter.jobs;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -14,6 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionInput;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResultData;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
@@ -24,12 +29,14 @@ import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
+import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
 @DisallowConcurrentExecution
@@ -92,11 +99,58 @@ public class MemPoolRefresherJob implements Job {
 					+ getBlockResult.getGetBlockResultData().getHash() + ". Sending msg to msgQueue");
 
 			Block block = blockFactory.from(getBlockResult.getGetBlockResultData());
+			addNotInMemPoolTxsOf(block);
+
 			lastBlocksContainer.add(block);
 
 			txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
 			blockNum++;
 		}
+	}
+
+	// After finding a new block, it (normally) could be the case that we don't have
+	// all of the transactions. (i.e. coinbase or transactions not relayed to us).
+	// We need some of that transactions data for statistics
+	private void addNotInMemPoolTxsOf(Block block) {
+
+		// First we obtain the list of transactions in the block which are not in the
+		// memPool
+		List<String> notInMemPoolTxIds = block.getTxIds().stream()
+				.filter(txId -> null == memPoolContainer.getTxPool().getTx(txId)).collect(Collectors.toList());
+
+		// Then we construct NotInMemPoolTx or coinbase data and add it to the block
+		for (String txId : notInMemPoolTxIds) {
+			GetVerboseRawTransactionResultData txData = bitcoindClient.getVerboseRawTransaction(txId)
+					.getGetRawTransactionResultData();
+			String coinbase = txData.getVin().get(0).getCoinbase();
+			if (null == coinbase || coinbase.isEmpty()) {// Not coinbase tx
+				Long inputsAmount = getInputsAmount(txData.getVin());
+				Long outputsAmount = getOutputsAmount(txData.getVout());
+				Long fee = inputsAmount - outputsAmount;
+				Integer vSize = txData.getVsize();
+				Double satvBytes = ((double) fee / ((double) vSize));
+				block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, vSize, satvBytes));
+			} else {// coinbase tx
+				block.setCoinBaseField(coinbase);
+				block.setCoinBaseTxId(txId);
+			}
+		}
+	}
+
+	// Gets the sum of values in satoshis of all txInputs, we have to ask for the
+	// txin.txId output and index
+	private Long getInputsAmount(List<GetVerboseRawTransactionInput> txin) {
+		return txin.stream().mapToLong(txIn -> {
+			String txId = txIn.getTxid();
+			Integer index = txIn.getVout();
+			GetVerboseRawTransactionResultData inputTxData = bitcoindClient.getVerboseRawTransaction(txId)
+					.getGetRawTransactionResultData();
+			return JSONUtils.JSONtoAmount(inputTxData.getVout().get(index).getValue());
+		}).sum();
+	}
+
+	private Long getOutputsAmount(List<GetVerboseRawTransactionOutput> vout) {
+		return vout.stream().mapToLong(txOut -> JSONUtils.JSONtoAmount(txOut.getValue())).sum();
 	}
 
 	private void refreshMempoolAndSendChanges() throws TxPoolException {

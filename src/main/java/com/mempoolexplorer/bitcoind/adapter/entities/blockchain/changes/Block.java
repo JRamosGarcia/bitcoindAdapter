@@ -1,7 +1,10 @@
 package com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Block {
 	private Instant changeTime;// This time is set by us
@@ -11,7 +14,11 @@ public class Block {
 	private Instant minedTime;// This time is set by miners. Can be in the future!
 	private Instant medianMinedTime;// This time always increases with respect height
 
-	private List<String> txs;
+	private List<String> txIds = new ArrayList<>();
+
+	private String coinBaseTxId;// also in txIds but not in notInMemPoolTransactions
+	private String coinBaseField;
+	private Map<String, NotInMemPoolTx> notInMemPoolTransactions = new HashMap<>();
 
 	public Instant getChangeTime() {
 		return changeTime;
@@ -61,12 +68,36 @@ public class Block {
 		this.medianMinedTime = medianMinedTime;
 	}
 
-	public List<String> getTxs() {
-		return txs;
+	public String getCoinBaseTxId() {
+		return coinBaseTxId;
 	}
 
-	public void setTxs(List<String> txs) {
-		this.txs = txs;
+	public void setCoinBaseTxId(String coinBaseTxId) {
+		this.coinBaseTxId = coinBaseTxId;
+	}
+
+	public String getCoinBaseField() {
+		return coinBaseField;
+	}
+
+	public void setCoinBaseField(String coinBaseField) {
+		this.coinBaseField = coinBaseField;
+	}
+
+	public Map<String, NotInMemPoolTx> getNotInMemPoolTransactions() {
+		return notInMemPoolTransactions;
+	}
+
+	public void setNotInMemPoolTransactions(Map<String, NotInMemPoolTx> notInMemPoolTransactions) {
+		this.notInMemPoolTransactions = notInMemPoolTransactions;
+	}
+
+	public void setTxIds(List<String> txIds) {
+		this.txIds = txIds;
+	}
+
+	public List<String> getTxIds() {
+		return txIds;
 	}
 
 	@Override
@@ -84,8 +115,14 @@ public class Block {
 		builder.append(minedTime);
 		builder.append(", medianMinedTime=");
 		builder.append(medianMinedTime);
-		builder.append(", txs=");
-		builder.append(txs);
+		builder.append(", txIds=");
+		builder.append(txIds);
+		builder.append(", coinBaseTxId=");
+		builder.append(coinBaseTxId);
+		builder.append(", coinBaseField=");
+		builder.append(coinBaseField);
+		builder.append(", notInMemPoolTransactions=");
+		builder.append(notInMemPoolTransactions);
 		builder.append("]");
 		return builder.toString();
 	}

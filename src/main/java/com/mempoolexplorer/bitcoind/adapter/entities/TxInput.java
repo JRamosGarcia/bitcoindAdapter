@@ -11,6 +11,7 @@ public class TxInput {
 	private Integer vOutIndex;// The output index number (vout) of the outpoint being spent. The first output
 	// in a transaction has an index of 0. Not present if this is a coinbase
 	// transaction
+	private String coinbase;// Coinbase, normally null.
 
 	public List<String> getAddressIds() {
 		return addressIds;
@@ -44,6 +45,14 @@ public class TxInput {
 		return vOutIndex;
 	}
 
+	public String getCoinbase() {
+		return coinbase;
+	}
+
+	public void setCoinbase(String coinbase) {
+		this.coinbase = coinbase;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -55,6 +64,8 @@ public class TxInput {
 		builder.append(txId);
 		builder.append(", vOutIndex=");
 		builder.append(vOutIndex);
+		builder.append(", coinbase=");
+		builder.append(coinbase);
 		builder.append("]");
 		return builder.toString();
 	}

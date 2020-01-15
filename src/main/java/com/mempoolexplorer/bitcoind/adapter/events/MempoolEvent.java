@@ -2,10 +2,12 @@ package com.mempoolexplorer.bitcoind.adapter.events;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
 /**
@@ -30,8 +32,12 @@ public class MempoolEvent {
 	// Used by Block class:
 	private String hash;
 	private Integer height;
+	private Integer weight;// up to 4 millions (sum of vSize*4)
 	private Instant minedTime;// This time is set by miners. Can be in the future!
 	private Instant medianMinedTime;// This time always increases with respect height
+	private String coinBaseTxId;// also in txIds but not in notInMemPoolTransactions
+	private String coinBaseField;
+	private Map<String, NotInMemPoolTx> notInMemPoolTransactions;
 
 	private MempoolEvent() {
 	}
@@ -52,9 +58,13 @@ public class MempoolEvent {
 		mpe.changeTime = block.getChangeTime();
 		mpe.hash = block.getHash();
 		mpe.height = block.getHeight();
+		mpe.weight = block.getWeight();
 		mpe.minedTime = block.getMinedTime();
 		mpe.medianMinedTime = block.getMedianMinedTime();
-		mpe.removedTxsId = block.getTxs();
+		mpe.removedTxsId = block.getTxIds();
+		mpe.coinBaseTxId = block.getCoinBaseTxId();
+		mpe.coinBaseField = block.getCoinBaseField();
+		mpe.notInMemPoolTransactions = block.getNotInMemPoolTransactions();
 		return mpe;
 	}
 
@@ -64,9 +74,13 @@ public class MempoolEvent {
 			block.setChangeTime(changeTime);
 			block.setHash(hash);
 			block.setHeight(height);
+			block.setWeight(weight);
 			block.setMinedTime(minedTime);
 			block.setMedianMinedTime(medianMinedTime);
-			block.setTxs(removedTxsId);
+			block.setTxIds(removedTxsId);
+			block.setCoinBaseTxId(coinBaseTxId);
+			block.setCoinBaseField(coinBaseField);
+			block.setNotInMemPoolTransactions(notInMemPoolTransactions);
 			return Optional.of(block);
 		} else
 			return Optional.empty();
@@ -140,6 +154,14 @@ public class MempoolEvent {
 		this.height = height;
 	}
 
+	public Integer getWeight() {
+		return weight;
+	}
+
+	public void setWeight(Integer weight) {
+		this.weight = weight;
+	}
+
 	public Instant getMinedTime() {
 		return minedTime;
 	}
@@ -154,6 +176,30 @@ public class MempoolEvent {
 
 	public void setMedianMinedTime(Instant medianMinedTime) {
 		this.medianMinedTime = medianMinedTime;
+	}
+
+	public String getCoinBaseTxId() {
+		return coinBaseTxId;
+	}
+
+	public void setCoinBaseTxId(String coinBaseTxId) {
+		this.coinBaseTxId = coinBaseTxId;
+	}
+
+	public String getCoinBaseField() {
+		return coinBaseField;
+	}
+
+	public void setCoinBaseField(String coinBaseField) {
+		this.coinBaseField = coinBaseField;
+	}
+
+	public Map<String, NotInMemPoolTx> getNotInMemPoolTransactions() {
+		return notInMemPoolTransactions;
+	}
+
+	public void setNotInMemPoolTransactions(Map<String, NotInMemPoolTx> notInMemPoolTransactions) {
+		this.notInMemPoolTransactions = notInMemPoolTransactions;
 	}
 
 }
