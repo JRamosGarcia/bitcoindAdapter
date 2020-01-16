@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.CoinBaseTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
@@ -35,8 +36,7 @@ public class MempoolEvent {
 	private Integer weight;// up to 4 millions (sum of vSize*4)
 	private Instant minedTime;// This time is set by miners. Can be in the future!
 	private Instant medianMinedTime;// This time always increases with respect height
-	private String coinBaseTxId;// also in txIds but not in notInMemPoolTransactions
-	private String coinBaseField;
+	private CoinBaseTx coinBaseTx;// also in txIds but not in notInMemPoolTransactions
 	private Map<String, NotInMemPoolTx> notInMemPoolTransactions;
 
 	private MempoolEvent() {
@@ -62,8 +62,7 @@ public class MempoolEvent {
 		mpe.minedTime = block.getMinedTime();
 		mpe.medianMinedTime = block.getMedianMinedTime();
 		mpe.removedTxsId = block.getTxIds();
-		mpe.coinBaseTxId = block.getCoinBaseTxId();
-		mpe.coinBaseField = block.getCoinBaseField();
+		mpe.coinBaseTx = block.getCoinBaseTx();
 		mpe.notInMemPoolTransactions = block.getNotInMemPoolTransactions();
 		return mpe;
 	}
@@ -78,8 +77,7 @@ public class MempoolEvent {
 			block.setMinedTime(minedTime);
 			block.setMedianMinedTime(medianMinedTime);
 			block.setTxIds(removedTxsId);
-			block.setCoinBaseTxId(coinBaseTxId);
-			block.setCoinBaseField(coinBaseField);
+			block.setCoinBaseTx(coinBaseTx);
 			block.setNotInMemPoolTransactions(notInMemPoolTransactions);
 			return Optional.of(block);
 		} else
@@ -178,20 +176,12 @@ public class MempoolEvent {
 		this.medianMinedTime = medianMinedTime;
 	}
 
-	public String getCoinBaseTxId() {
-		return coinBaseTxId;
+	public CoinBaseTx getCoinBaseTx() {
+		return coinBaseTx;
 	}
 
-	public void setCoinBaseTxId(String coinBaseTxId) {
-		this.coinBaseTxId = coinBaseTxId;
-	}
-
-	public String getCoinBaseField() {
-		return coinBaseField;
-	}
-
-	public void setCoinBaseField(String coinBaseField) {
-		this.coinBaseField = coinBaseField;
+	public void setCoinBaseTx(CoinBaseTx coinBaseTx) {
+		this.coinBaseTx = coinBaseTx;
 	}
 
 	public Map<String, NotInMemPoolTx> getNotInMemPoolTransactions() {

@@ -29,6 +29,7 @@ import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.CoinBaseTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
@@ -131,8 +132,10 @@ public class MemPoolRefresherJob implements Job {
 				Double satvBytes = ((double) fee / ((double) vSize));
 				block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, vSize, satvBytes));
 			} else {// coinbase tx
-				block.setCoinBaseField(coinbase);
-				block.setCoinBaseTxId(txId);
+				CoinBaseTx coinBaseTx = new CoinBaseTx();
+				coinBaseTx.setTxId(txId);
+				coinBaseTx.setvInField(coinbase);
+				coinBaseTx.setSizeInvBytes(txData.getVsize());
 			}
 		}
 	}

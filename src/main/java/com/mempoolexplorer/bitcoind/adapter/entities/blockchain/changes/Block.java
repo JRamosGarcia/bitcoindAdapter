@@ -16,8 +16,8 @@ public class Block {
 
 	private List<String> txIds = new ArrayList<>();
 
-	private String coinBaseTxId;// also in txIds but not in notInMemPoolTransactions
-	private String coinBaseField;
+	private CoinBaseTx coinBaseTx;// also in txIds but not in notInMemPoolTransactions
+
 	private Map<String, NotInMemPoolTx> notInMemPoolTransactions = new HashMap<>();
 
 	public Instant getChangeTime() {
@@ -68,20 +68,12 @@ public class Block {
 		this.medianMinedTime = medianMinedTime;
 	}
 
-	public String getCoinBaseTxId() {
-		return coinBaseTxId;
+	public CoinBaseTx getCoinBaseTx() {
+		return coinBaseTx;
 	}
 
-	public void setCoinBaseTxId(String coinBaseTxId) {
-		this.coinBaseTxId = coinBaseTxId;
-	}
-
-	public String getCoinBaseField() {
-		return coinBaseField;
-	}
-
-	public void setCoinBaseField(String coinBaseField) {
-		this.coinBaseField = coinBaseField;
+	public void setCoinBaseTx(CoinBaseTx coinBaseTx) {
+		this.coinBaseTx = coinBaseTx;
 	}
 
 	public Map<String, NotInMemPoolTx> getNotInMemPoolTransactions() {
@@ -117,14 +109,14 @@ public class Block {
 		builder.append(medianMinedTime);
 		builder.append(", txIds=");
 		builder.append(txIds);
-		builder.append(", coinBaseTxId=");
-		builder.append(coinBaseTxId);
-		builder.append(", coinBaseField=");
-		builder.append(coinBaseField);
+		builder.append(", coinBaseTx=");
+		builder.append(coinBaseTx);
 		builder.append(", notInMemPoolTransactions=");
 		builder.append(notInMemPoolTransactions);
 		builder.append("]");
 		return builder.toString();
 	}
+
+
 
 }
