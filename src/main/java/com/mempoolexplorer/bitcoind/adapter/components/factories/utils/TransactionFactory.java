@@ -14,18 +14,20 @@ public class TransactionFactory {
 		tx.setAncestorCount(getRawMemPoolVerboseData.getAncestorcount());
 		tx.setAncestorSize(getRawMemPoolVerboseData.getAncestorsize());
 		tx.setDepends(getRawMemPoolVerboseData.getDepends());
+		tx.setSpentby(getRawMemPoolVerboseData.getSpentby());
 		tx.setDescendantCount(getRawMemPoolVerboseData.getDescendantcount());
 		tx.setDescendantSize(getRawMemPoolVerboseData.getDescendantsize());
 		tx.setSize(getRawMemPoolVerboseData.getSize());
 		tx.setTimeInSecs(getRawMemPoolVerboseData.getTime());
-		
+		tx.setBip125Replaceable(getRawMemPoolVerboseData.getBip125Replaceable());
+
 		Fees fees = new Fees();
 		fees.setBase(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getBase()));
 		fees.setModified(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getModified()));
 		fees.setAncestor(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getAncestor()));
 		fees.setDescendant(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getDescendant()));
 		tx.setFees(fees);
-		
+
 		// Estos datos se tienen que rellenar via query a getRawTransaction.
 		// tx.setTxInputs(txInputs);
 		// tx.setTxOutputs(txOutputs);
