@@ -136,6 +136,7 @@ public class MemPoolRefresherJob implements Job {
 				coinBaseTx.setTxId(txId);
 				coinBaseTx.setvInField(coinbase);
 				coinBaseTx.setSizeInvBytes(txData.getVsize());
+				block.setCoinBaseTx(coinBaseTx);
 			}
 		}
 	}
