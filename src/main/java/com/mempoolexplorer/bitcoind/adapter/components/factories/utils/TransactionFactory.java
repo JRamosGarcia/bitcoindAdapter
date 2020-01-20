@@ -3,6 +3,7 @@ package com.mempoolexplorer.bitcoind.adapter.components.factories.utils;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.RawMemPoolEntryData;
 import com.mempoolexplorer.bitcoind.adapter.entities.Fees;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
+import com.mempoolexplorer.bitcoind.adapter.entities.TxAncestry;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 
 public class TransactionFactory {
@@ -11,12 +12,16 @@ public class TransactionFactory {
 
 		Transaction tx = new Transaction();
 		tx.setTxId(txId);
-		tx.setAncestorCount(getRawMemPoolVerboseData.getAncestorcount());
-		tx.setAncestorSize(getRawMemPoolVerboseData.getAncestorsize());
-		tx.setDepends(getRawMemPoolVerboseData.getDepends());
-		tx.setSpentby(getRawMemPoolVerboseData.getSpentby());
-		tx.setDescendantCount(getRawMemPoolVerboseData.getDescendantcount());
-		tx.setDescendantSize(getRawMemPoolVerboseData.getDescendantsize());
+		TxAncestry txa = new TxAncestry();
+
+		txa.setAncestorCount(getRawMemPoolVerboseData.getAncestorcount());
+		txa.setAncestorSize(getRawMemPoolVerboseData.getAncestorsize());
+		txa.setDepends(getRawMemPoolVerboseData.getDepends());
+		txa.setSpentby(getRawMemPoolVerboseData.getSpentby());
+		txa.setDescendantCount(getRawMemPoolVerboseData.getDescendantcount());
+		txa.setDescendantSize(getRawMemPoolVerboseData.getDescendantsize());
+
+		tx.setTxAncestry(txa);
 		tx.setSize(getRawMemPoolVerboseData.getSize());
 		tx.setTimeInSecs(getRawMemPoolVerboseData.getTime());
 		tx.setBip125Replaceable(getRawMemPoolVerboseData.getBip125Replaceable());

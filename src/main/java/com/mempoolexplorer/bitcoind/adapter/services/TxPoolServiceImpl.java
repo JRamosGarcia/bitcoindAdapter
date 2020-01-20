@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.repositories.TxPoolRepository;
 
 @Service
@@ -30,7 +30,7 @@ public class TxPoolServiceImpl implements TxPoolService {
 	};
 
 	@Override
-	public Optional<TxPoolDiff> loadTxPoolFromDB() {
+	public Optional<TxPool> loadTxPoolFromDB() {
 
 		List<Transaction> txs = txPoolRepository.findAll();
 
@@ -41,20 +41,14 @@ public class TxPoolServiceImpl implements TxPoolService {
 				logger.trace("txId: " + tx.getTxId() + " loaded from DB.");
 			});
 		}
-		if (txs.isEmpty()) {
+
+		if (txs.size() == 0) {
 			return Optional.empty();
 		}
 
-		ConcurrentHashMap<String, Transaction> txIdToTxMap = txs.stream().collect(
-				Collectors.toMap(Transaction::getTxId, tx -> tx, mergeFunction, () -> new ConcurrentHashMap<>()));
+		return Optional.of(new InMemoryTxPoolImp(txs.stream().collect(
+				Collectors.toMap(Transaction::getTxId, tx -> tx, mergeFunction, () -> new ConcurrentHashMap<>()))));
 
-		TxPool newMemPool = new InMemoryTxPoolImp(txIdToTxMap);
-
-		TxPool goneOrMinedMemPool = new InMemoryTxPoolImp(new ConcurrentHashMap<>());
-
-		TxPoolDiff diff = new TxPoolDiff(goneOrMinedMemPool, newMemPool);
-
-		return Optional.of(diff);
 	}
 
 	@Override
@@ -64,12 +58,30 @@ public class TxPoolServiceImpl implements TxPoolService {
 	}
 
 	@Override
-	public void apply(TxPoolDiff diff) {
-		txPoolRepository.saveAll(diff.getNewMemPool().getFullTxPool().values());
-		txPoolRepository.deleteAll(diff.getGoneOrMinedMemPool().getFullTxPool().values());
-		logger.info("Saving memPoolDiff to DB: {} new, {} removed", diff.getNewMemPool().getSize(),
-				diff.getGoneOrMinedMemPool().getSize());
+	public void apply(TxPoolChanges txpc) {
+		txPoolRepository.saveAll(txpc.getNewTxs());
 
+		txpc.getRemovedTxsId().stream().forEach(txId -> {
+			Optional<Transaction> opTx = txPoolRepository.findById(txId);
+			if (opTx.isPresent()) {
+				txPoolRepository.delete(opTx.get());
+			} else {
+				logger.info("Non existent transaction in db: {}", txId);
+			}
+		});
+
+		txpc.getTxAncestryChangesMap().entrySet().forEach(entry -> {
+			Optional<Transaction> bdTxOpt = txPoolRepository.findById(entry.getKey());
+			if (bdTxOpt.isPresent()) {
+				Transaction bdTx = bdTxOpt.get();
+				bdTx.setTxAncestry(entry.getValue().getTxAncestry());
+				bdTx.setFees(entry.getValue().getFees());
+				txPoolRepository.save(bdTx);
+			} else {
+				logger.info("Non existent transaction in db: {}", entry.getKey());
+			}
+		});
+		logger.info("Saving memPoolDiff to DB: {} new, {} removed {} updated", txpc.getNewTxs().size(),
+				txpc.getRemovedTxsId().size(), txpc.getTxAncestryChangesMap().size());
 	}
-
 }

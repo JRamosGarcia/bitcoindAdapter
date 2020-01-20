@@ -33,11 +33,9 @@ import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolC
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJob;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
@@ -61,9 +59,6 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 
 	@Autowired
 	private BlockFactory blockFactory;
-
-	@Autowired
-	private TxPoolChangesFactory txPoolChangesFactory;
 
 	@Autowired
 	private InMemTxPoolFillerImpl inMemTxPoolFiller;
@@ -140,7 +135,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 
 		log.info("Initializating bitcoindAdapter Mempool...");
 		try {
-			Optional<TxPoolDiff> memPoolFromDB = Optional.empty();
+			Optional<TxPool> memPoolFromDB = Optional.empty();
 			if (bitcoindAdapterProperties.getLoadDBOnStart()) {
 				appState.setState(AppStateEnum.LOADINGFROMDB);
 				memPoolFromDB = memPoolService.loadTxPoolFromDB();
@@ -149,7 +144,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 			LoadedFrom loadedFrom = LoadedFrom.FROMDB;
 			if (memPoolFromDB.isPresent()) {
 				log.info("BitcoindAdapter mempool loaded from DB.");
-				txPoolContainer.getTxPool().apply(memPoolFromDB.get());
+				txPoolContainer.setTxPool(memPoolFromDB.get());
 				loadedFrom = LoadedFrom.FROMDB;
 			} else {
 				log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
@@ -194,7 +189,6 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
 		jobDataMap.put("memPoolService", memPoolService);
 		jobDataMap.put("blockFactory", blockFactory);
-		jobDataMap.put("memPoolChangesFactory", txPoolChangesFactory);
 		jobDataMap.put("txSource", txSource);
 		jobDataMap.put("txPoolFiller", inMemTxPoolFiller);
 		jobDataMap.put("bitcoindClient", bitcoindClient);

@@ -1,5 +1,6 @@
 package com.mempoolexplorer.bitcoind.adapter.entities.mempool;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxAncestryChanges;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
 public class InMemoryTxPoolImp implements TxPool {
 
@@ -15,7 +18,7 @@ public class InMemoryTxPoolImp implements TxPool {
 
 	// Datos propios del Mempool
 	// Mapa de TxId a Transaction
-	private final Map<String, Transaction> txIdToTxMap;
+	private Map<String, Transaction> txIdToTxMap = new ConcurrentHashMap<String, Transaction>();
 
 	// Mapa de AddrId a lista de TxId que la contienen
 	// private final Map<String, List<String>> addrIdToTxIdsMap;
@@ -33,11 +36,11 @@ public class InMemoryTxPoolImp implements TxPool {
 	 * mempoolexplorer.adapter.entities.mempool.MemPoolDiff)
 	 */
 	@Override
-	public void apply(TxPoolDiff memPoolDiff) {
+	public void apply(TxPoolChanges txPoolChanges) {
 
-		removeTxs(memPoolDiff.getGoneOrMinedMemPool());
-		addTxs(memPoolDiff.getNewMemPool());
-
+		removeTxs(txPoolChanges.getRemovedTxsId());
+		addTxs(txPoolChanges.getNewTxs());
+		updateTxs(txPoolChanges.getTxAncestryChangesMap());
 	}
 
 	@Override
@@ -61,15 +64,28 @@ public class InMemoryTxPoolImp implements TxPool {
 		return txIdToTxMap.size();
 	}
 
-	private void removeTxs(TxPool memPoolToSubstract) {
-		memPoolToSubstract.getTxIdSet().stream().forEach(txId -> {
+	private void updateTxs(Map<String,TxAncestryChanges> txAncestryChangesMap) {
+		txAncestryChangesMap.entrySet().stream().forEach(entry-> {
+			Transaction tx = txIdToTxMap.get(entry.getKey());
+			//Transactions are not swapped since cpfpChangesPool does not have additional data(i.e. txinputs data)
+			updateTx(tx, entry.getValue());
+		});
+	}
+
+	private void updateTx(Transaction toUpdateTx, TxAncestryChanges txac) {
+		toUpdateTx.setTxAncestry(txac.getTxAncestry());
+		toUpdateTx.setFees(txac.getFees());
+	}
+
+	private void removeTxs(List<String> listToSubstract) {
+		listToSubstract.stream().forEach(txId -> {
 			txIdToTxMap.remove(txId);
 		});
 	}
 
-	private void addTxs(TxPool memPoolToAdd) {
-		memPoolToAdd.getTxIdSet().stream().forEach(txId -> {
-			txIdToTxMap.put(txId, memPoolToAdd.getTx(txId));
+	private void addTxs(List<Transaction> txsListToAdd) {
+		txsListToAdd.stream().forEach(tx -> {
+			txIdToTxMap.put(tx.getTxId(), tx);
 		});
 	}
 

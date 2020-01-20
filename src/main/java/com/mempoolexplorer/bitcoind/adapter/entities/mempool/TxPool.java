@@ -4,10 +4,11 @@ import java.util.Map;
 import java.util.Set;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
 public interface TxPool {
 
-	void apply(TxPoolDiff memPoolDiff);
+	void apply(TxPoolChanges txPoolChanges);
 
 	Set<String> getTxIdSet();
 

@@ -24,14 +24,12 @@ import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.cha
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolChangesFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.CoinBaseTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolDiff;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
@@ -53,8 +51,6 @@ public class MemPoolRefresherJob implements Job {
 	private TxPoolChangesContainer txPoolChangesContainer;
 
 	private BlockFactory blockFactory;
-
-	private TxPoolChangesFactory txPoolChangesFactory;
 
 	private TxPoolService memPoolService;
 
@@ -159,19 +155,17 @@ public class MemPoolRefresherJob implements Job {
 
 	private void refreshMempoolAndSendChanges() throws TxPoolException {
 		Integer blockNumbefore = bitcoindClient.getBlockCount();
-		TxPoolDiff txPoolDiff = txPoolFiller.obtainMemPoolDiffs(memPoolContainer.getTxPool(),
-				bitcoindAdapterProperties.getUseGetRawMemPool());
+		TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(memPoolContainer.getTxPool());
 		Integer blockNumAfter = bitcoindClient.getBlockCount();
 
 		if (blockNumbefore.compareTo(blockNumAfter) != 0) {
 			logger.info("There is a new block in-between refresh, not sending diffs");
 			return; // If there is a new block in-between we do not refresh mempool or send diffs
 		}
-
-		memPoolContainer.getTxPool().apply(txPoolDiff);
+		memPoolContainer.getTxPool().apply(txPoolChanges);
 
 		if (bitcoindAdapterProperties.getSaveDBOnRefresh()) {
-			memPoolService.apply(txPoolDiff);
+			memPoolService.apply(txPoolChanges);
 		}
 
 		// Export changes to REST Service and MsgQueue only if there are changes
@@ -188,10 +182,8 @@ public class MemPoolRefresherJob implements Job {
 				// means.
 				logger.info("Mempool Refreshed by the first time. No message will be sent to msgQueue");
 			}
-
 		} else {
-			if (txPoolDiff.hasChanges()) {
-				TxPoolChanges txPoolChanges = txPoolChangesFactory.from(txPoolDiff);
+			if (txPoolChanges.hasChanges()) {
 				txPoolChangesContainer.add(txPoolChanges);
 				logger.info("Mempool Refreshed, sending msg txPoolChanges({}) to msgQueue",
 						txPoolChanges.getChangeCounter());
@@ -256,14 +248,6 @@ public class MemPoolRefresherJob implements Job {
 		this.txPoolChangesContainer = memPoolChangesContainer;
 	}
 
-	public TxPoolChangesFactory getMemPoolChangesFactory() {
-		return txPoolChangesFactory;
-	}
-
-	public void setMemPoolChangesFactory(TxPoolChangesFactory memPoolChangesFactory) {
-		this.txPoolChangesFactory = memPoolChangesFactory;
-	}
-
 	public TxPoolService getMemPoolService() {
 		return memPoolService;
 	}
@@ -294,14 +278,6 @@ public class MemPoolRefresherJob implements Job {
 
 	public void setBlockFactory(BlockFactory blockFactory) {
 		this.blockFactory = blockFactory;
-	}
-
-	public TxPoolChangesFactory getTxPoolChangesFactory() {
-		return txPoolChangesFactory;
-	}
-
-	public void setTxPoolChangesFactory(TxPoolChangesFactory txPoolChangesFactory) {
-		this.txPoolChangesFactory = txPoolChangesFactory;
 	}
 
 	public TxPoolFiller getTxPoolFiller() {
