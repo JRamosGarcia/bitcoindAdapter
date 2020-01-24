@@ -16,6 +16,7 @@ import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.repositories.TxPoolRepository;
+import com.mempoolexplorer.bitcoind.adapter.utils.SysProps;
 
 @Service
 public class TxPoolServiceImpl implements TxPoolService {
@@ -46,8 +47,8 @@ public class TxPoolServiceImpl implements TxPoolService {
 			return Optional.empty();
 		}
 
-		return Optional.of(new InMemoryTxPoolImp(txs.stream().collect(
-				Collectors.toMap(Transaction::getTxId, tx -> tx, mergeFunction, () -> new ConcurrentHashMap<>()))));
+		return Optional.of(new InMemoryTxPoolImp(txs.stream().collect(Collectors.toMap(Transaction::getTxId, tx -> tx,
+				mergeFunction, () -> new ConcurrentHashMap<>(SysProps.EXPECTED_MEMPOOL_SIZE)))));
 
 	}
 

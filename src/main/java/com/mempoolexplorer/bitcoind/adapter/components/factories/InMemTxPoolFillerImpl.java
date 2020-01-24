@@ -42,6 +42,7 @@ import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
 import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
+import com.mempoolexplorer.bitcoind.adapter.utils.SysProps;
 
 @Component
 public class InMemTxPoolFillerImpl implements TxPoolFiller {
@@ -133,8 +134,9 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			// transactions. We need a map for substracting tx with errors
 			Map<String, Transaction> newRawMemPoolVerboseDataMap = rawMemPoolVerbose.getRawMemPoolEntryDataMap()
 					.entrySet().stream().filter(entry -> !myMemPoolKeySet.contains(entry.getKey()))
-					.map(entry -> TransactionFactory.from(entry.getKey(), entry.getValue())).collect(Collectors.toMap(
-							tx -> tx.getTxId(), tx -> tx, txBuilderMergeFunction, () -> new ConcurrentHashMap<>()));
+					.map(entry -> TransactionFactory.from(entry.getKey(), entry.getValue()))
+					.collect(Collectors.toMap(tx -> tx.getTxId(), tx -> tx, txBuilderMergeFunction,
+							() -> new ConcurrentHashMap<>()));
 
 			addAdditionalData(newRawMemPoolVerboseDataMap, false);
 
@@ -204,8 +206,9 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			Map<String, RawMemPoolEntryData> rawMemPoolVerboseDataMap) {
 
 		ConcurrentHashMap<String, Transaction> txIdToTxMap = rawMemPoolVerboseDataMap.entrySet().stream()
-				.map((entry) -> TransactionFactory.from(entry.getKey(), entry.getValue())).collect(Collectors.toMap(
-						Transaction::getTxId, tx -> tx, txBuilderMergeFunction, () -> new ConcurrentHashMap<>()));
+				.map((entry) -> TransactionFactory.from(entry.getKey(), entry.getValue()))
+				.collect(Collectors.toMap(Transaction::getTxId, tx -> tx, txBuilderMergeFunction,
+						() -> new ConcurrentHashMap<>(SysProps.EXPECTED_MEMPOOL_SIZE)));
 
 		return txIdToTxMap;
 	}

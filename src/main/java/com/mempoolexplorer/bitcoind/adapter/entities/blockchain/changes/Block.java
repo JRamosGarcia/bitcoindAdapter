@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.mempoolexplorer.bitcoind.adapter.utils.SysProps;
+
 public class Block {
 	private Instant changeTime;// This time is set by us
 	private String hash;
@@ -14,7 +16,7 @@ public class Block {
 	private Instant minedTime;// This time is set by miners. Can be in the future!
 	private Instant medianMinedTime;// This time always increases with respect height
 
-	private List<String> txIds = new ArrayList<>();
+	private List<String> txIds = new ArrayList<>(SysProps.EXPECTED_NUM_TX_IN_BLOCK);
 
 	private CoinBaseTx coinBaseTx;// also in txIds but not in notInMemPoolTransactions
 
@@ -116,7 +118,5 @@ public class Block {
 		builder.append("]");
 		return builder.toString();
 	}
-
-
 
 }

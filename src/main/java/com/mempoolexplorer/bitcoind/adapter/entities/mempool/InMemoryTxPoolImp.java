@@ -55,7 +55,6 @@ public class InMemoryTxPoolImp implements TxPool {
 
 	@Override
 	public Map<String, Transaction> getFullTxPool() {
-		// return new HashMap<String, Transaction>(txIdToTxMap);
 		return txIdToTxMap;
 	}
 
