@@ -22,7 +22,6 @@ public class TransactionFactory {
 		txa.setDescendantSize(getRawMemPoolVerboseData.getDescendantsize());
 
 		tx.setTxAncestry(txa);
-		tx.setSize(getRawMemPoolVerboseData.getSize());
 		tx.setTimeInSecs(getRawMemPoolVerboseData.getTime());
 		tx.setBip125Replaceable(getRawMemPoolVerboseData.getBip125Replaceable());
 
@@ -34,10 +33,9 @@ public class TransactionFactory {
 		tx.setFees(fees);
 
 		// Estos datos se tienen que rellenar via query a getRawTransaction.
+		//tx.setWeight(weight);
 		// tx.setTxInputs(txInputs);
 		// tx.setTxOutputs(txOutputs);
-		// tx.setSatBytes(satBytes);
-		// tx.setvSize(vSize);
 		return tx;
 	}
 

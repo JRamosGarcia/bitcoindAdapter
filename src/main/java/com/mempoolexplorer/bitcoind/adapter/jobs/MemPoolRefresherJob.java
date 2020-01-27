@@ -124,14 +124,14 @@ public class MemPoolRefresherJob implements Job {
 				Long inputsAmount = getInputsAmount(txData.getVin());
 				Long outputsAmount = getOutputsAmount(txData.getVout());
 				Long fee = inputsAmount - outputsAmount;
-				Integer vSize = txData.getVsize();
+				Integer weight = txData.getWeight();
 				//TODO: Sadly, It's a nigthmare get a fee with ancestors. yet...
-				block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, vSize));
+				block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, weight));
 			} else {// coinbase tx
 				CoinBaseTx coinBaseTx = new CoinBaseTx();
 				coinBaseTx.setTxId(txId);
 				coinBaseTx.setvInField(coinbase);
-				coinBaseTx.setSizeInvBytes(txData.getVsize());
+				coinBaseTx.setWeight(txData.getWeight());
 				block.setCoinBaseTx(coinBaseTx);
 			}
 		}

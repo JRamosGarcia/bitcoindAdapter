@@ -4,17 +4,17 @@ public class CoinBaseTx {
 
 	private String txId;
 	private String vInField;
-	private Integer sizeInvBytes;
+	private Integer weight;
 
 	public CoinBaseTx() {
 		super();
 	}
 
-	public CoinBaseTx(String txId, String vInField, Integer sizeInvBytes) {
+	public CoinBaseTx(String txId, String vInField, Integer weight) {
 		super();
 		this.txId = txId;
 		this.vInField = vInField;
-		this.sizeInvBytes = sizeInvBytes;
+		this.weight = weight;
 	}
 
 	public String getTxId() {
@@ -33,12 +33,12 @@ public class CoinBaseTx {
 		this.vInField = vInField;
 	}
 
-	public Integer getSizeInvBytes() {
-		return sizeInvBytes;
+	public Integer getWeight() {
+		return weight;
 	}
 
-	public void setSizeInvBytes(Integer sizeInvBytes) {
-		this.sizeInvBytes = sizeInvBytes;
+	public void setWeight(Integer weight) {
+		this.weight = weight;
 	}
 
 	@Override
@@ -48,8 +48,8 @@ public class CoinBaseTx {
 		builder.append(txId);
 		builder.append(", vInField=");
 		builder.append(vInField);
-		builder.append(", sizeInvBytes=");
-		builder.append(sizeInvBytes);
+		builder.append(", weight=");
+		builder.append(weight);
 		builder.append("]");
 		return builder.toString();
 	}

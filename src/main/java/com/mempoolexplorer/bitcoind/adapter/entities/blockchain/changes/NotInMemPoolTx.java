@@ -4,13 +4,13 @@ public class NotInMemPoolTx {
 
 	private String txId;
 	private Long fees;// in Satoshis. Sadly this does not take into account Ancestors
-	private Integer vSize;// Sadly this does not take into account Ancestors
+	private Integer weigth;// Sadly this does not take into account Ancestors
 
-	public NotInMemPoolTx(String txId, Long fees, Integer vSize) {
+	public NotInMemPoolTx(String txId, Long fees, Integer weigth) {
 		super();
 		this.txId = txId;
 		this.fees = fees;
-		this.vSize = vSize;
+		this.weigth = weigth;
 	}
 
 	public String getTxId() {
@@ -29,12 +29,12 @@ public class NotInMemPoolTx {
 		this.fees = fees;
 	}
 
-	public Integer getvSize() {
-		return vSize;
+	public Integer getWeigth() {
+		return weigth;
 	}
 
-	public void setvSize(Integer vSize) {
-		this.vSize = vSize;
+	public void setWeigth(Integer weigth) {
+		this.weigth = weigth;
 	}
 
 	@Override
@@ -44,8 +44,8 @@ public class NotInMemPoolTx {
 		builder.append(txId);
 		builder.append(", fees=");
 		builder.append(fees);
-		builder.append(", vSize=");
-		builder.append(vSize);
+		builder.append(", weigth=");
+		builder.append(weigth);
 		builder.append("]");
 		return builder.toString();
 	}

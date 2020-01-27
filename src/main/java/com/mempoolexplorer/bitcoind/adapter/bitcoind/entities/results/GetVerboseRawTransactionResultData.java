@@ -9,6 +9,7 @@ public class GetVerboseRawTransactionResultData {
 	private String hash;// The transaction hash (differs from txid for witness transactions)
 	private Integer size;// The serialized transaction size
 	private Integer vsize;// The virtual transaction size (differs from size for witness transactions)
+	private Integer weight;// The transaction's weight (between vsize*4-3 and vsize*4)
 	private Integer version;// The version
 	private Long locktime;// The lock time
 	private List<GetVerboseRawTransactionInput> vin;// Transaction input vector
@@ -59,6 +60,14 @@ public class GetVerboseRawTransactionResultData {
 
 	public void setVsize(Integer vsize) {
 		this.vsize = vsize;
+	}
+
+	public Integer getWeight() {
+		return weight;
+	}
+
+	public void setWeight(Integer weight) {
+		this.weight = weight;
 	}
 
 	public Integer getVersion() {

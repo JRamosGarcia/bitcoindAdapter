@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -134,9 +133,8 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			// transactions. We need a map for substracting tx with errors
 			Map<String, Transaction> newRawMemPoolVerboseDataMap = rawMemPoolVerbose.getRawMemPoolEntryDataMap()
 					.entrySet().stream().filter(entry -> !myMemPoolKeySet.contains(entry.getKey()))
-					.map(entry -> TransactionFactory.from(entry.getKey(), entry.getValue()))
-					.collect(Collectors.toMap(tx -> tx.getTxId(), tx -> tx, txBuilderMergeFunction,
-							() -> new ConcurrentHashMap<>()));
+					.map(entry -> TransactionFactory.from(entry.getKey(), entry.getValue())).collect(Collectors.toMap(
+							tx -> tx.getTxId(), tx -> tx, txBuilderMergeFunction, () -> new ConcurrentHashMap<>()));
 
 			addAdditionalData(newRawMemPoolVerboseDataMap, false);
 
@@ -231,10 +229,8 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		// There is no gain making this parallel via java 8 parallelStream due to:
 		// https://bitcoin.stackexchange.com/questions/89066/how-to-scale-json-rpc
 		// Also: I've tested it
-		Iterator<Entry<String, Transaction>> it = txIdToTxMap.entrySet().iterator();
 
-		while (it.hasNext()) {
-			Entry<String, Transaction> entry = it.next();
+		for (Entry<String, Transaction> entry : txIdToTxMap.entrySet()) {
 
 			GetVerboseRawTransactionResult rawTx = bitcoindClient.getVerboseRawTransaction(entry.getKey());
 
@@ -268,26 +264,31 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Validate.notNull(tx.getTxId(), "txId can't be null");
 		Validate.notNull(tx.getTxInputs(), "txInputs can't be null");
 		Validate.notNull(tx.getTxOutputs(), "txOutputs can't be null");
-		Validate.notNull(tx.getSize(), "size can't be null");
-		Validate.notNull(tx.getvSize(), "vsize can't be null");
+		Validate.notNull(tx.getWeight(), "weight can't be null");
+		Validate.notNull(tx.getFees(), "Fees object can't be null");
+		Validate.notNull(tx.getFees().getBase(), "Fees.base can't be null");
+		Validate.notNull(tx.getFees().getModified(), "Fees.modified can't be null");
+		Validate.notNull(tx.getFees().getAncestor(), "Fees.ancestor can't be null");
+		Validate.notNull(tx.getFees().getDescendant(), "Fees.descendant can't be null");
+		Validate.notNull(tx.getTimeInSecs(), "timeInSecs can't be null");
 		Validate.notNull(tx.getTxAncestry(), "txAncestry can't be null");
 		Validate.notNull(tx.getTxAncestry().getDescendantCount(), "descendantCount can't be null");
 		Validate.notNull(tx.getTxAncestry().getDescendantSize(), "descendantSize can't be null");
 		Validate.notNull(tx.getTxAncestry().getAncestorCount(), "ancestorCount can't be null");
 		Validate.notNull(tx.getTxAncestry().getAncestorSize(), "ancestorSize can't be null");
 		Validate.notNull(tx.getTxAncestry().getDepends(), "depends can't be null");
-		Validate.notNull(tx.getFees(), "Fees object can't be null");
-		Validate.notNull(tx.getFees().getBase(), "Fees.base can't be null");
-		Validate.notNull(tx.getFees().getModified(), "Fees.modified can't be null");
-		Validate.notNull(tx.getFees().getAncestor(), "Fees.ancestor can't be null");
-		Validate.notNull(tx.getFees().getDescendant(), "Fees.descendant can't be null");
-
-		Validate.notEmpty(tx.getTxInputs(), "txInputs can't be empty");
-		Validate.notEmpty(tx.getTxOutputs(), "txOutputs can't be empty");
-
+		Validate.notNull(tx.getBip125Replaceable(), "bip125Replaceable can't be null");
 		Validate.notEmpty(tx.getHex(), "Hex can't be empty");
-		// tx.getTxInputs // We don't validate for not nulls since all fields can be
-		// null if it's a coinbase transaction.
+
+		tx.getTxInputs().forEach(input -> {
+			if (input.getCoinbase() == null) {
+				Validate.notNull(input.getTxId(), "input.txId can't be null");
+				Validate.notNull(input.getvOutIndex(), "input.voutIndex can't be null");
+				Validate.notNull(input.getAmount(), "input.amount can't be null");
+				// Input address could be null in case of unrecognized input scripts
+				// Validate.notNull(input.getAddressIds());
+			}
+		});
 
 		tx.getTxOutputs().forEach(output -> {
 			// addressIds can be null if script is not recognized.
@@ -307,7 +308,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	 */
 	private void addAdditionalData(GetVerboseRawTransactionResult rawTx, Transaction tx, Set<String> withErrorTxIdSet) {
 
-		// Add raw tx in hex
+		tx.setWeight(rawTx.getGetRawTransactionResultData().getWeight());
 		tx.setHex(rawTx.getGetRawTransactionResultData().getHex());
 
 		// Add Txoutputs to transaccions
@@ -345,9 +346,6 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 				tx.getTxInputs().add(txInput);
 			}
 		});
-		// Satoshis per byte are calulated here. (Segwit compatible)
-		int vSize = rawTx.getGetRawTransactionResultData().getVsize();
-		tx.setvSize(vSize);
 		// At this point transaction must be correct if not error, we validate it.
 		if ((null != tx.getTxId()) && (!withErrorTxIdSet.contains(tx.getTxId()))) {
 			validateTx(tx);

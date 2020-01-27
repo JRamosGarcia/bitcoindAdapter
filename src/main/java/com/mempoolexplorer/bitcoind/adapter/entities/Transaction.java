@@ -13,8 +13,7 @@ public class Transaction {
 	private String txId;
 	private List<TxInput> txInputs = new ArrayList<>();
 	private List<TxOutput> txOutputs = new ArrayList<>();
-	private Integer size;// In bytes
-	private Integer vSize;// In bytes
+	private Integer weight;// for SegWit
 	// BE CAREFUL: THIS FIELD MUST KEPT UPDATED, COULD CHANGE ONCE RECEIVED!!!!
 	private Fees fees;
 	private Long timeInSecs;// Epoch time in seconds since the transaction entered.
@@ -22,6 +21,10 @@ public class Transaction {
 	private TxAncestry txAncestry;
 	private Boolean bip125Replaceable;
 	private String hex;// Raw transaction in hexadecimal
+
+	public double getvSize() {
+		return weight / 4.0D;
+	}
 
 	/**
 	 * Returns all addresses involved in this transaction, address in inputs,
@@ -59,20 +62,12 @@ public class Transaction {
 		this.txOutputs = txOutputs;
 	}
 
-	public Integer getSize() {
-		return size;
+	public Integer getWeight() {
+		return weight;
 	}
 
-	public void setSize(Integer size) {
-		this.size = size;
-	}
-
-	public Integer getvSize() {
-		return vSize;
-	}
-
-	public void setvSize(Integer vSize) {
-		this.vSize = vSize;
+	public void setWeight(Integer weight) {
+		this.weight = weight;
 	}
 
 	public Fees getFees() {
@@ -124,10 +119,10 @@ public class Transaction {
 		builder.append(txInputs);
 		builder.append(", txOutputs=");
 		builder.append(txOutputs);
-		builder.append(", size=");
-		builder.append(size);
+		builder.append(", weight=");
+		builder.append(weight);
 		builder.append(", vSize=");
-		builder.append(vSize);
+		builder.append(getvSize());
 		builder.append(", fees=");
 		builder.append(fees);
 		builder.append(", timeInSecs=");
