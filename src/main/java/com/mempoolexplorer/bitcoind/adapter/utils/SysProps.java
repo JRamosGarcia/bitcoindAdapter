@@ -9,6 +9,6 @@ public class SysProps {
 			* EXPECTED_NUM_TX_IN_BLOCK);// BEST_LOAD_FACTOR*1.25=6250
 	public static final int MAX_BLOCK_SIZE = 1000000;
 	public static final int EXPECTED_MAX_ANCESTRY_CHANGES = 200;
-	public static final int EXPECTED_MAX_REPUDIATED_TXS = 200;
+	public static final int EXPECTED_MAX_IGNORED_TXS = 200;
 	public static final int EXPECTED_MEMPOOL_SIZE = 30000;
 }
