@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.BooleanArrayParamRequest;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.GetBlockTemplateRulesParams;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.ObjectArrayParamRequest;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.StringArrayParamRequest;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockCount;
@@ -52,13 +53,16 @@ public class BitcoindClientImpl implements BitcoindClient {
 
 	@Override
 	public GetBlockTemplateResult getBlockTemplateResult() {
-		StringArrayParamRequest stringParams = new StringArrayParamRequest();
+		ObjectArrayParamRequest objectParams = new ObjectArrayParamRequest();
 
-		stringParams.setId("4");
-		stringParams.setMethod("getblocktemplate");
-		stringParams.setParams(new ArrayList<String>());
+		objectParams.setId("4");
+		objectParams.setMethod("getblocktemplate");
+		objectParams.setParams(new ArrayList<Object>());
+		GetBlockTemplateRulesParams rulesParams = new GetBlockTemplateRulesParams();
+		rulesParams.getRules().add("segwit");
+		objectParams.getParams().add(rulesParams);
 
-		return restTemplate.postForObject("/", stringParams, GetBlockTemplateResult.class);
+		return restTemplate.postForObject("/", objectParams, GetBlockTemplateResult.class);
 	}
 
 	@Override
