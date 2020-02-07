@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.quartz.DisallowConcurrentExecution;
@@ -16,11 +17,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTemplateResultData;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionInput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResultData;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
@@ -30,6 +33,8 @@ import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.CoinBaseTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
+import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplate;
+import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplateChanges;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
@@ -59,6 +64,8 @@ public class MemPoolRefresherJob implements Job {
 	private TxPoolFiller txPoolFiller;
 
 	private BitcoindClient bitcoindClient;
+
+	private BlockTemplateContainer blockTemplateContainer;
 
 	private BitcoindAdapterProperties bitcoindAdapterProperties;
 
@@ -125,7 +132,7 @@ public class MemPoolRefresherJob implements Job {
 				Long outputsAmount = getOutputsAmount(txData.getVout());
 				Long fee = inputsAmount - outputsAmount;
 				Integer weight = txData.getWeight();
-				//TODO: Sadly, It's a nigthmare get a fee with ancestors. yet...
+				// TODO: Sadly, It's a nigthmare get a fee with ancestors. yet...
 				block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, weight));
 			} else {// coinbase tx
 				CoinBaseTx coinBaseTx = new CoinBaseTx();
@@ -155,6 +162,11 @@ public class MemPoolRefresherJob implements Job {
 
 	private void refreshMempoolAndSendChanges() throws TxPoolException {
 		Integer blockNumbefore = bitcoindClient.getBlockCount();
+		// This two next calls are independent one from the other. So, by race
+		// conditions, INEVITABLY (but rare), It's possible to have txs that does not
+		// appear in the other set. (i.e. a tx is added and then removed between calls)
+		GetBlockTemplateResultData getBlockTemplateResultData = bitcoindClient.getBlockTemplateResult()
+				.getGetBlockTemplateResultData();
 		TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(memPoolContainer.getTxPool());
 		Integer blockNumAfter = bitcoindClient.getBlockCount();
 
@@ -184,13 +196,24 @@ public class MemPoolRefresherJob implements Job {
 			}
 		} else {
 			if (txPoolChanges.hasChanges()) {
+				BlockTemplateChanges blockTemplateChanges = calculateBlockTemplateChanges(getBlockTemplateResultData);
 				txPoolChangesContainer.add(txPoolChanges);
 				logger.info("Mempool Refreshed, sending msg txPoolChanges({}) to msgQueue",
 						txPoolChanges.getChangeCounter());
-				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPoolChanges));
+				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPoolChanges, Optional.of(blockTemplateChanges)));
 			}
 		}
 		logger.info("{} transactions in txMemPool.", memPoolContainer.getTxPool().getSize());
+	}
+
+	private BlockTemplateChanges calculateBlockTemplateChanges(GetBlockTemplateResultData getBlockTemplateResultData) {
+		BlockTemplate newBT = new BlockTemplate(getBlockTemplateResultData);
+		BlockTemplate oldBT = blockTemplateContainer.getBlockTemplate();
+		BlockTemplateChanges blockTemplateChanges = new BlockTemplateChanges(newBT, oldBT);
+		blockTemplateContainer.setBlockTemplate(newBT);
+		logger.info("new BlockTemplate: size: {} new: {} remove: {}", newBT.getBlockTemplateTxMap().size(),
+				blockTemplateChanges.getAddBTTxsList().size(), blockTemplateChanges.getRemoveBTTxIdsList().size());
+		return blockTemplateChanges;
 	}
 
 	/**
@@ -209,7 +232,7 @@ public class MemPoolRefresherJob implements Job {
 			Entry<String, Transaction> entry = it.next();
 
 			if (txpc.getNewTxs().size() == 10) {
-				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc));
+				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
 				txpc.setNewTxs(new ArrayList<>(10));
 				pl.update(counter, (percent) -> logger.info("Sending full txMemPool: {}", percent));
 			}
@@ -218,7 +241,7 @@ public class MemPoolRefresherJob implements Job {
 		}
 
 		if (txpc.getNewTxs().size() != 0) {
-			txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc));
+			txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
 			pl.update(counter, (percent) -> logger.info("Sending full txMemPool: {}", percent));
 		}
 
@@ -294,6 +317,14 @@ public class MemPoolRefresherJob implements Job {
 
 	public void setBitcoindClient(BitcoindClient bitcoindClient) {
 		this.bitcoindClient = bitcoindClient;
+	}
+
+	public BlockTemplateContainer getBlockTemplateContainer() {
+		return blockTemplateContainer;
+	}
+
+	public void setBlockTemplateContainer(BlockTemplateContainer blockTemplateContainer) {
+		this.blockTemplateContainer = blockTemplateContainer;
 	}
 
 	public BitcoindAdapterProperties getBitcoindAdapterProperties() {

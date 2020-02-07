@@ -1,18 +1,31 @@
-package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
+package com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate;
 
-public class GetBlockTemplateTransaction {
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTemplateTransaction;
 
-	private String txid;
+public class BlockTemplateTx {
+
+	private String txId;
 	private long fee;
 	private int sigops;
 	private int weight;
 
-	public String getTxid() {
-		return txid;
+	public BlockTemplateTx() {
 	}
 
-	public void setTxid(String txid) {
-		this.txid = txid;
+	//Better keep both classes different
+	public BlockTemplateTx(GetBlockTemplateTransaction gbtTx) {
+		this.txId = gbtTx.getTxid();
+		this.fee = gbtTx.getFee();
+		this.sigops = gbtTx.getSigops();
+		this.weight = gbtTx.getWeight();
+	}
+
+	public String getTxId() {
+		return txId;
+	}
+
+	public void setTxId(String txId) {
+		this.txId = txId;
 	}
 
 	public long getFee() {
@@ -42,8 +55,8 @@ public class GetBlockTemplateTransaction {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("GetBlockTemplateTransaction [txid=");
-		builder.append(txid);
+		builder.append("BlockTemplateTx [txId=");
+		builder.append(txId);
 		builder.append(", fee=");
 		builder.append(fee);
 		builder.append(", sigops=");
