@@ -1,34 +1,36 @@
 package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
 
+import java.math.BigDecimal;
+
 public class FeesData {
-	private Double base;
-	private Double modified;
-	private Double ancestor;
-	private Double descendant;
+	private BigDecimal base;
+	private BigDecimal modified;
+	private BigDecimal ancestor;
+	private BigDecimal descendant;
 	
 	
-	public Double getBase() {
+	public BigDecimal getBase() {
 		return base;
 	}
-	public void setBase(Double base) {
+	public void setBase(BigDecimal base) {
 		this.base = base;
 	}
-	public Double getModified() {
+	public BigDecimal getModified() {
 		return modified;
 	}
-	public void setModified(Double modified) {
+	public void setModified(BigDecimal modified) {
 		this.modified = modified;
 	}
-	public Double getAncestor() {
+	public BigDecimal getAncestor() {
 		return ancestor;
 	}
-	public void setAncestor(Double ancestor) {
+	public void setAncestor(BigDecimal ancestor) {
 		this.ancestor = ancestor;
 	}
-	public Double getDescendant() {
+	public BigDecimal getDescendant() {
 		return descendant;
 	}
-	public void setDescendant(Double descendant) {
+	public void setDescendant(BigDecimal descendant) {
 		this.descendant = descendant;
 	}
 	@Override

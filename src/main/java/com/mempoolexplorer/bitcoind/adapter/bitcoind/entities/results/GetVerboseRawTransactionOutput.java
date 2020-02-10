@@ -1,5 +1,7 @@
 package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
 
+import java.math.BigDecimal;
+
 /**
  * An array of objects each describing an output vector (vout) for this
  * transaction. Output objects will have the same order within the array as they
@@ -10,15 +12,15 @@ package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
  */
 public class GetVerboseRawTransactionOutput {
 
-	private Double value;// The number of bitcoins paid to this output. May be 0
+	private BigDecimal value;// The number of bitcoins paid to this output. May be 0
 	private Integer n;// The output index number of this output within this transaction
 	private ScriptPubKey scriptPubKey;// the pubkey script
 
-	public Double getValue() {
+	public BigDecimal getValue() {
 		return value;
 	}
 
-	public void setValue(Double value) {
+	public void setValue(BigDecimal value) {
 		this.value = value;
 	}
 
