@@ -7,8 +7,6 @@ import java.util.stream.Collectors;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 @Document(collection = "txs")
 public class Transaction {
 	@Id
@@ -24,11 +22,6 @@ public class Transaction {
 	private TxAncestry txAncestry;
 	private Boolean bip125Replaceable;
 	private String hex;// Raw transaction in hexadecimal
-
-	@JsonIgnore
-	public double getvSize() {
-		return weight / 4.0D;
-	}
 
 	/**
 	 * Returns all addresses involved in this transaction, address in inputs,
@@ -125,8 +118,6 @@ public class Transaction {
 		builder.append(txOutputs);
 		builder.append(", weight=");
 		builder.append(weight);
-		builder.append(", vSize=");
-		builder.append(getvSize());
 		builder.append(", fees=");
 		builder.append(fees);
 		builder.append(", timeInSecs=");
