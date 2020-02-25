@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "bitcoindadapter")
 public class BitcoindAdapterProperties {
 
-	private Integer maxMemPoolSizeReturnedInTxNumber;
-	private Boolean loadDBOnStart;
-	private Boolean saveDBOnStart;
-	private Boolean saveDBOnRefresh;
-	private Integer memPoolChangesSize;
-	private Integer newBlockListSize;
-	private Integer refreshIntervalSec;
-	private Boolean sendAllTxOnStart;
+	private Integer refreshIntervalSec = 5;
+	private Boolean loadDBOnStart = true;
+	private Boolean saveDBOnStart = true;
+	private Boolean saveDBOnRefresh = true;
+	private Integer maxMemPoolSizeReturnedInTxNumber = 0;
+	private Integer memPoolChangesSize = 10;
+	private Integer newBlockListSize = 3;
+	private Boolean sendAllTxOnStart = true;
 
 	public Integer getMaxMemPoolSizeReturnedInTxNumber() {
 		return maxMemPoolSizeReturnedInTxNumber;
