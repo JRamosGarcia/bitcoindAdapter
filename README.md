@@ -14,19 +14,13 @@ Also, it uses a mongodb database for (optionally) storing the mempool.
 
 ## Requirements
 
-* bitcoind 0.15
+* bitcoind 0.18
 * mongodb
-* java 9
+* java 11
 
 ## Usage
 
-first start mongodb with:
-`sudo service mongodb start`
-
-run `maven install` with `prod` or `dev` profiles and execute with `java -jar bitcoindAdapter.jar --spring.profiles.active=prod,mainNet`
-
-## Working modes (profiles)
-Default spring profiles are `prod` and `mainNet` but you can also use `prod` and `testNet`. there are one `application-{profile}.properties` for each profile
+This is meant to be used in a docker environment. Go to commands project to see docker-compose examples 
 
 ## bitcoind configuration
 
@@ -48,9 +42,6 @@ txindex=1
 ## .properties configuration
 
 .properties file are almost auto-explicative. remarks on the following properties:
-
-* `spring.data.mongodb.uri=mongodb://127.0.0.1:27017/memPool`
-Uri of mongodb collection to use for storing the mempool
 
 * `bitcoindadapter.loadDBOnStart={true|false}`
 Decides if bitcoindAdapter must try to load mempool from db when starting. If not, it will query all mempool txs to bitcoind (it can takes hours). Normally mempool in db will be in part outdated. bitcoindAdapter will use txs which are still in mempool and discard the old ones. This saves a lot of time.
