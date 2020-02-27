@@ -211,7 +211,7 @@ public class MemPoolRefresherJob implements Job {
 		BlockTemplate oldBT = blockTemplateContainer.getBlockTemplate();
 		BlockTemplateChanges blockTemplateChanges = new BlockTemplateChanges(newBT, oldBT);
 		blockTemplateContainer.setBlockTemplate(newBT);
-		logger.info("new BlockTemplate: size: {} new: {} remove: {}", newBT.getBlockTemplateTxMap().size(),
+		logger.info("new BlockTemplate(size: {} new: {} remove: {})", newBT.getBlockTemplateTxMap().size(),
 				blockTemplateChanges.getAddBTTxsList().size(), blockTemplateChanges.getRemoveBTTxIdsList().size());
 		return blockTemplateChanges;
 	}
