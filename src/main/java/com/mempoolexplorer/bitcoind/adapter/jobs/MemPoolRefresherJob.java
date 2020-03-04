@@ -21,6 +21,7 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockTe
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionInput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResultData;
+import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
@@ -69,6 +70,8 @@ public class MemPoolRefresherJob implements Job {
 
 	private BitcoindAdapterProperties bitcoindAdapterProperties;
 
+	private AlarmLogger alarmLogger;
+
 	private static Boolean firstMemPoolRefresh = Boolean.TRUE;
 
 	private static Integer blockNum = null;
@@ -84,11 +87,9 @@ public class MemPoolRefresherJob implements Job {
 			}
 			refreshMempoolAndSendChanges();
 
-			// Jobs can only throw JobExecutionException. it will be logged with level=info.
-		} catch (TxPoolException e) {
-			throw new JobExecutionException(e, false);
 		} catch (Throwable e) {
-			throw new JobExecutionException(e, false);
+			alarmLogger.addAlarm("Exception: " + e.getMessage());
+			logger.error("Exception: {}", e);
 		}
 	}
 

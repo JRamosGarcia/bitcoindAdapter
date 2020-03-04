@@ -27,6 +27,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
+import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
@@ -87,6 +88,9 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 
 	@Autowired
 	private BlockTemplateContainer blockTemplateContainer;
+
+	@Autowired
+	private AlarmLogger alarmLogger;
 
 	private boolean hasInitializated = false;// Avoids intialization more than once
 
@@ -197,6 +201,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 		jobDataMap.put("txPoolFiller", inMemTxPoolFiller);
 		jobDataMap.put("bitcoindClient", bitcoindClient);
 		jobDataMap.put("blockTemplateContainer", blockTemplateContainer);
+		jobDataMap.put("alarmLogger", alarmLogger);
 
 		JobDetail job = newJob(MemPoolRefresherJob.class).withIdentity("refreshJob", "mempool").setJobData(jobDataMap)
 				.build();
