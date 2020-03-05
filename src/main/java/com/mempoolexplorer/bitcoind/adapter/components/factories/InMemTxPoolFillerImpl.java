@@ -308,7 +308,6 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	 */
 	private void addAdditionalData(GetVerboseRawTransactionResult rawTx, Transaction tx, Set<String> withErrorTxIdSet) {
 
-		tx.setWeight(rawTx.getGetRawTransactionResultData().getWeight());
 		tx.setHex(rawTx.getGetRawTransactionResultData().getHex());
 
 		// Add Txoutputs to transaccions

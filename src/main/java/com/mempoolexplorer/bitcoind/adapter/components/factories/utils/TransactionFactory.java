@@ -31,9 +31,9 @@ public class TransactionFactory {
 		fees.setAncestor(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getAncestor()));
 		fees.setDescendant(JSONUtils.JSONtoAmount(getRawMemPoolVerboseData.getFees().getDescendant()));
 		tx.setFees(fees);
+		tx.setWeight(getRawMemPoolVerboseData.getWeight());
 
 		// Estos datos se tienen que rellenar via query a getRawTransaction.
-		//tx.setWeight(weight);
 		// tx.setTxInputs(txInputs);
 		// tx.setTxOutputs(txOutputs);
 		return tx;
