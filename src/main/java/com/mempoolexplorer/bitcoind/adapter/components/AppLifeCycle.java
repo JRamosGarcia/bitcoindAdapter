@@ -156,7 +156,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 				loadedFrom = LoadedFrom.FROMDB;
 			} else {
 				log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
-						bitcoindProperties.getHost(), bitcoindProperties.getPort());
+						bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
 				appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
 				TxPool txPool = inMemTxPoolFiller.createMemPool();
 				txPoolContainer.setTxPool(txPool);

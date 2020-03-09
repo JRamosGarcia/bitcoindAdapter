@@ -19,7 +19,6 @@ import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
 //TODO:Meter sonarq cuando tengas mucho tiempo libre.
 @SpringBootApplication
-//@RefreshScope
 public class BitcoindAdapterApplication {
 
 	@Autowired
@@ -54,7 +53,7 @@ public class BitcoindAdapterApplication {
 		return restTemplateBuilder.basicAuthentication(bitcoindProperties.getUser(), bitcoindProperties.getPassword())
 				.additionalMessageConverters(new MappingJackson2HttpMessageConverter())
 				.rootUri(UriComponentsBuilder.newInstance().scheme("http").host(bitcoindProperties.getHost())
-						.port(Integer.valueOf(bitcoindProperties.getPort())).toUriString())
+						.port(Integer.valueOf(bitcoindProperties.getRpcPort())).toUriString())
 				.errorHandler(new BitcoindClientResponseErrorHandler()).build();
 	}
 
