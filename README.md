@@ -63,7 +63,7 @@ dbcache=4000
 ```
 ## .properties configuration
 
-.properties file are almost auto-explicative. remarks on the following properties:
+.properties file are loaded by configurationServer service. These properties are almost auto-explicative:
 
 * `refreshIntervalSec: "5"`
 Interval of mempool refreshing. (a new getrawMempool, getRawTransaction, getBlockCount and getBlockTemplate is made). 
