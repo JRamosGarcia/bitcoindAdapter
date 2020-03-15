@@ -17,12 +17,11 @@ BitcoindAdapter uses mainly these bitcoind RPC calls:
   
 Mempool changes and new blocks are sent through a configurable kafka topic (memPool.tx.events). 
 Mempool tx changes are guaranteed not to be sent when a new block is mined. 
-That is, if a new block is detected after checking mempool changes, these changes are not sent or stored. 
-They wait for the next refresh round to be sent and stored. This ensures a message order in which message consumers 
-can store the new block transactions before they are removed from mempool in the next message, enabling consumers to 
-compare mined block txs with mempool txs.  
+That is, if a new block is detected before checking mempool changes, these changes are not sent, but instead the block found is sent. 
+This ensures a message order so message consumers can store the new block transactions before they are removed from mempool in the next message, 
+enabling consumers to compare mined block txs with mempool txs.
 
-Also, it uses a mongodb database for (optionally) storing the mempool.
+BitcoindAdapter uses a mongodb database for (optionally) storing the mempool between shutdowns.
 
 ## Requirements
 
