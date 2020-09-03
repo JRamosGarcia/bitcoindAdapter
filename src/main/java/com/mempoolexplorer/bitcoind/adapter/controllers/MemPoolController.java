@@ -1,7 +1,6 @@
 package com.mempoolexplorer.bitcoind.adapter.controllers;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,19 +18,14 @@ import com.mempoolexplorer.bitcoind.adapter.components.AppState;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.controllers.errors.ErrorDetails;
-import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.MemPoolSizeTooBigException;
 import com.mempoolexplorer.bitcoind.adapter.controllers.exceptions.TransactionNotFoundInMemPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
-import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 
 @RestController
 @RequestMapping("/memPool")
 public class MemPoolController {
-
-	@Autowired
-	private BitcoindAdapterProperties properties;
 
 	@Autowired
 	private TxPoolContainer memPoolContainer;
@@ -67,24 +61,8 @@ public class MemPoolController {
 
 	// Use with care!
 	@GetMapping("/full")
-	public Map<String, Transaction> getFullMemPool() throws MemPoolSizeTooBigException {
-		int memPoolSize = memPoolContainer.getTxPool().getSize();
-		if ((memPoolSize > properties.getMaxMemPoolSizeReturnedInTxNumber())
-				&& (properties.getMaxMemPoolSizeReturnedInTxNumber() != 0)) {//0 means unlimited
-			throw new MemPoolSizeTooBigException("MemPool is too big to be returned", memPoolSize);
-		}
+	public Map<String, Transaction> getFullMemPool() {
 		return memPoolContainer.getTxPool().getFullTxPool();
-	}
-
-	@ExceptionHandler(MemPoolSizeTooBigException.class)
-	public ResponseEntity<?> onMemPoolTooBigg(MemPoolSizeTooBigException e) {
-		ErrorDetails errorDetails = new ErrorDetails();
-		errorDetails.setErrorMessage(e.getMessage());
-		errorDetails.setErrorCode(HttpStatus.PAYLOAD_TOO_LARGE.toString());
-		Map<String, Object> additionalData = new HashMap<>();
-		additionalData.put("txNumber", e.getSize());
-		errorDetails.setAdditionalData(additionalData);
-		return new ResponseEntity<>(errorDetails, HttpStatus.PAYLOAD_TOO_LARGE);
 	}
 
 	@GetMapping("/changes")

@@ -11,18 +11,9 @@ public class BitcoindAdapterProperties {
 	private Boolean loadDBOnStart = true;
 	private Boolean saveDBOnStart = true;
 	private Boolean saveDBOnRefresh = true;
-	private Integer maxMemPoolSizeReturnedInTxNumber = 0;
 	private Integer memPoolChangesSize = 10;
 	private Integer newBlockListSize = 3;
 	private Boolean sendAllTxOnStart = true;
-
-	public Integer getMaxMemPoolSizeReturnedInTxNumber() {
-		return maxMemPoolSizeReturnedInTxNumber;
-	}
-
-	public void setMaxMemPoolSizeReturnedInTxNumber(Integer maxMemPoolSizeReturnedInTxNumber) {
-		this.maxMemPoolSizeReturnedInTxNumber = maxMemPoolSizeReturnedInTxNumber;
-	}
 
 	public Boolean getLoadDBOnStart() {
 		return loadDBOnStart;
