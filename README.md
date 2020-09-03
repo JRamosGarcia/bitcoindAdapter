@@ -23,6 +23,9 @@ enabling consumers to compare mined block txs with mempool txs.
 
 BitcoindAdapter uses a mongodb database for (optionally) storing the mempool between shutdowns.
 
+BitcoindAdapter is shutdown friendly. That is, if restarted, then signals kafka clients they have to refresh its mempool. 
+This is done by sending kafka messages with numOrder = 0 containing a maximum of 10 tx each (to avoid kafka message size limit). 
+
 ## Requirements
 
 * bitcoind 0.19.X
