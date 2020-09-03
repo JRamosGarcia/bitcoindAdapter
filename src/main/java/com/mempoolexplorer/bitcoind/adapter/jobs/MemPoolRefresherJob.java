@@ -223,7 +223,8 @@ public class MemPoolRefresherJob implements Job {
 	private void sendAllMemPoolTxs() {
 		Map<String, Transaction> fullTxPool = memPoolContainer.getTxPool().getFullTxPool();
 		TxPoolChanges txpc = new TxPoolChanges();
-		txpc.setChangeCounter(0);// All change counter are set to 0
+		// All change counter are set to 0, signaling to clients that they must forget previous mempool and refresh
+		txpc.setChangeCounter(0);
 		txpc.setChangeTime(Instant.now());
 
 		PercentLog pl = new PercentLog(fullTxPool.size());
