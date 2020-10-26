@@ -2,7 +2,7 @@ package com.mempoolexplorer.bitcoind.adapter.controllers.exceptions;
 
 public class TransactionNotFoundInMemPoolException extends Exception {
 
-	private static final long serialVersionUID = -6102050354341329828L;
+	private static final long serialVersionUID = 1L;
 
 	public TransactionNotFoundInMemPoolException() {
 		super();

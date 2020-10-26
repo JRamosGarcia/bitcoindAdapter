@@ -3,7 +3,7 @@ package com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions;
 
 public class TxPoolException extends Exception {
 
-	private static final long serialVersionUID = 7083210067936996120L;
+	private static final long serialVersionUID = 1L;
 
 	public TxPoolException(String msg) {
 		super(msg);
