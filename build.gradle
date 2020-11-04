@@ -80,19 +80,18 @@ bootJar {
     baseName = 'bitcoindAdapter'
     version =  '0.0.1-SNAPSHOT'
 }
-/*// Recommended buy complicated
-task unpack(type: Copy) {
-    dependsOn bootJar
-    from(zipTree(tasks.bootJar.outputs.files.singleFile))
-    into("build/dependency")
-}
+// Recommended buy complicated
+//task unpack(type: Copy) {
+//    dependsOn bootJar
+//    from(zipTree(tasks.bootJar.outputs.files.singleFile))
+//    into("build/dependency")
+//}
 
-docker {
-    name "localhost:5000/bitcoind_adapter:latest"
-    copySpec.from(tasks.unpack.outputs).into("dependency")
-    buildArgs(['DEPENDENCY': "dependency"])
-}
-*/
+//docker {
+//    name "localhost:5000/bitcoind_adapter:latest"
+//    copySpec.from(tasks.unpack.outputs).into("dependency")
+//    buildArgs(['DEPENDENCY': "dependency"])
+//}
 
 //Easy way
 docker {
