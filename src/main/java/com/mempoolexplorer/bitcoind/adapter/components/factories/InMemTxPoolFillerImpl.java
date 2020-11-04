@@ -12,13 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.Validate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.ResourceAccessException;
-
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.BitcoindError;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerbose;
@@ -42,6 +35,13 @@ import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 import com.mempoolexplorer.bitcoind.adapter.utils.SysProps;
+
+import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 
 @Component
 public class InMemTxPoolFillerImpl implements TxPoolFiller {
@@ -283,7 +283,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		tx.getTxInputs().forEach(input -> {
 			if (input.getCoinbase() == null) {
 				Validate.notNull(input.getTxId(), "input.txId can't be null");
-				Validate.notNull(input.getvOutIndex(), "input.voutIndex can't be null");
+				Validate.notNull(input.getVOutIndex(), "input.voutIndex can't be null");
 				Validate.notNull(input.getAmount(), "input.amount can't be null");
 				// Input address could be null in case of unrecognized input scripts
 				// Validate.notNull(input.getAddressIds());
@@ -338,7 +338,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 				txInput.setAddressIds(spentTxOutput.getScriptPubKey().getAddresses());
 				txInput.setAmount(JSONUtils.JSONtoAmount(spentTxOutput.getValue()));
 				txInput.setTxId(input.getTxid());
-				txInput.setvOutIndex(input.getVout());
+				txInput.setVOutIndex(input.getVout());
 				txInput.setCoinbase(input.getCoinbase());
 
 				// No need to sort data here.
