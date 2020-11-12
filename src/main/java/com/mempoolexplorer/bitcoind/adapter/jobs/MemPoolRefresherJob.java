@@ -91,17 +91,15 @@ public class MemPoolRefresherJob implements Job {
 			state.setBlockNum(blockNumNow);
 		}
 		while (state.getBlockNum() < blockNumNow) {
+			state.setBlockNum(state.getBlockNum() + 1);
 			GetBlockResult getBlockResult = bitcoindClient.getBlock(state.getBlockNum());
-			logger.info("New block with height: {} and hash: {}. Sending msg to msgQueue", blockNumNow,
+			logger.info("New block with height: {} and hash: {}. Sending msg to msgQueue", state.getBlockNum(),
 					getBlockResult.getGetBlockResultData().getHash());
 
 			Block block = blockFactory.from(getBlockResult.getGetBlockResultData());
 			addNotInMemPoolTxsOf(block);
-
 			lastBlocksContainer.add(block);
-
 			txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
-			state.setBlockNum(state.getBlockNum() + 1);
 		}
 	}
 
