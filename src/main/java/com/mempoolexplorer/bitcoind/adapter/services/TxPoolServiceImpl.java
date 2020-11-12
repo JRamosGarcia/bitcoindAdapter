@@ -35,15 +35,13 @@ public class TxPoolServiceImpl implements TxPoolService {
 
 		List<Transaction> txs = txPoolRepository.findAll();
 
-		logger.info(txs.size() + " transactions loaded from DB");
+		logger.info("{} transactions loaded from DB", txs.size());
 
 		if (logger.isTraceEnabled()) {
-			txs.stream().forEach(tx -> {
-				logger.trace("txId: " + tx.getTxId() + " loaded from DB.");
-			});
+			txs.stream().forEach(tx -> logger.trace("txId: {} loaded from DB.", tx.getTxId()));
 		}
 
-		if (txs.size() == 0) {
+		if (txs.isEmpty()) {
 			return Optional.empty();
 		}
 

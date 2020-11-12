@@ -16,25 +16,13 @@ public class InMemoryTxPoolImp implements TxPool {
 
 	Logger logger = LoggerFactory.getLogger(InMemoryTxPoolImp.class);
 
-	// Datos propios del Mempool
-	// Mapa de TxId a Transaction
-	private Map<String, Transaction> txIdToTxMap = new ConcurrentHashMap<String, Transaction>();
-
-	// Mapa de AddrId a lista de TxId que la contienen
-	// private final Map<String, List<String>> addrIdToTxIdsMap;
+	private ConcurrentHashMap<String, Transaction> txIdToTxMap = new ConcurrentHashMap<>();
 
 	public InMemoryTxPoolImp(ConcurrentHashMap<String, Transaction> txIdToTxMap) {
-		// Validate.isTrue(txIdToTxMap instanceof ConcurrentHashMap<?, ?>);
 
 		this.txIdToTxMap = txIdToTxMap;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.mempoolexplorer.adapter.entities.mempool.MemPool#apply(com.
-	 * mempoolexplorer.adapter.entities.mempool.MemPoolDiff)
-	 */
 	@Override
 	public void apply(TxPoolChanges txPoolChanges) {
 
@@ -63,10 +51,11 @@ public class InMemoryTxPoolImp implements TxPool {
 		return txIdToTxMap.size();
 	}
 
-	private void updateTxs(Map<String,TxAncestryChanges> txAncestryChangesMap) {
-		txAncestryChangesMap.entrySet().stream().forEach(entry-> {
+	private void updateTxs(Map<String, TxAncestryChanges> txAncestryChangesMap) {
+		txAncestryChangesMap.entrySet().stream().forEach(entry -> {
 			Transaction tx = txIdToTxMap.get(entry.getKey());
-			//Transactions are not swapped since cpfpChangesPool does not have additional data(i.e. txinputs data)
+			// Transactions are not swapped since cpfpChangesPool does not have additional
+			// data(i.e. txinputs data)
 			updateTx(tx, entry.getValue());
 		});
 	}
@@ -77,15 +66,11 @@ public class InMemoryTxPoolImp implements TxPool {
 	}
 
 	private void removeTxs(List<String> listToSubstract) {
-		listToSubstract.stream().forEach(txId -> {
-			txIdToTxMap.remove(txId);
-		});
+		listToSubstract.stream().forEach(txId -> txIdToTxMap.remove(txId));
 	}
 
 	private void addTxs(List<Transaction> txsListToAdd) {
-		txsListToAdd.stream().forEach(tx -> {
-			txIdToTxMap.put(tx.getTxId(), tx);
-		});
+		txsListToAdd.stream().forEach(tx -> txIdToTxMap.put(tx.getTxId(), tx));
 	}
 
 }

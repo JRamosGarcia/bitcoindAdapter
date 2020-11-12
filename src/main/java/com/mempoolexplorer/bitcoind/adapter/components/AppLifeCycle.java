@@ -40,6 +40,7 @@ import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJob;
+import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJobState;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
@@ -107,13 +108,13 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
-	public void onApplicationReadyEvent(ApplicationReadyEvent event) {
+	public void onApplicationReadyEvent(ApplicationReadyEvent event) throws SchedulerException, TxPoolException {
 		onApplicationReadyEvent = true;
 		checkInitialization();
 	}
 
 	@EventListener(BindingCreatedEvent.class)
-	public void OnBindingCreatedEvent(BindingCreatedEvent event) {
+	public void onBindingCreatedEvent(BindingCreatedEvent event) throws SchedulerException, TxPoolException {
 		@SuppressWarnings("unchecked")
 		Binding<Object> binding = (Binding<Object>) event.getSource();
 		// Checks that event.source is the same as our kafka topic
@@ -123,7 +124,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 		}
 	}
 
-	public void checkInitialization() {
+	public void checkInitialization() throws SchedulerException, TxPoolException {
 		if (onApplicationReadyEvent && onBindingCreatedEvent) {
 			if (!hasInitializated) {
 				hasInitializated = true;
@@ -133,67 +134,56 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	}
 
 	// @PostConstruct does not hook well. Called when webServices are not
-	// initialized. better hook on an aplicationReadyEvent.
-	// SpringApplicationBuilder fires multiple notification to that listener (for
-	// every child)
-	// if (event.getApplicationContext().getParent() == null) {
-	// aplicationReadyEvent is called before Kafka binding is done
-	// So above we check for ApplicationReadyEvent and BindingCreatedEvent
-	public void initialization() {
+	// initialized or kafka is not binded
+	// better hook on an aplicationReadyEvent and BindingCreatedEvent
+	public void initialization() throws SchedulerException, TxPoolException {
 
 		log.info("Initializating bitcoindAdapter Mempool...");
-		try {
-			Optional<TxPool> memPoolFromDB = Optional.empty();
-			if (bitcoindAdapterProperties.getLoadDBOnStart()) {
-				appState.setState(AppStateEnum.LOADINGFROMDB);
-				memPoolFromDB = memPoolService.loadTxPoolFromDB();
-			}
-
-			LoadedFrom loadedFrom = LoadedFrom.FROMDB;
-			if (memPoolFromDB.isPresent()) {
-				log.info("BitcoindAdapter mempool loaded from DB.");
-				txPoolContainer.setTxPool(memPoolFromDB.get());
-				loadedFrom = LoadedFrom.FROMDB;
-			} else {
-				log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
-						bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
-				appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
-				TxPool txPool = inMemTxPoolFiller.createMemPool();
-				txPoolContainer.setTxPool(txPool);
-				loadedFrom = LoadedFrom.FROMCLIENT;
-			}
-			// It's a nonsense save in DB whatever you have just loaded.
-			if (bitcoindAdapterProperties.getSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
-				log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
-				// TODO: maybe this takes too long and db connection closes after timeout
-				appState.setState(AppStateEnum.SAVINGTODB);
-				memPoolService.saveAllMemPool(txPoolContainer.getTxPool());
-				log.info("BitcoindAdapter mempool saved to DB.");
-			} else {
-				log.info("BitcoindAdapter mempool loaded. NOT saving to DB.");
-			}
-
-			appState.setState(AppStateEnum.STARTED);
-
-			log.info("BitcoindAdapter mempool initializated.");
-			startJob();
-		} catch (TxPoolException e) {
-			// log.error("Exception creating initial memPool: ", e);
-			throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
-		} catch (SchedulerException e) {
-			// log.error("Exception Starting scheduler: ", e);
-			throw new RuntimeException("Exception creating initial memPool: ", e);// We must not recover from this
+		Optional<TxPool> memPoolFromDB = Optional.empty();
+		if (bitcoindAdapterProperties.isLoadDBOnStart()) {
+			appState.setState(AppStateEnum.LOADINGFROMDB);
+			memPoolFromDB = memPoolService.loadTxPoolFromDB();
 		}
+
+		LoadedFrom loadedFrom;
+		if (memPoolFromDB.isPresent()) {
+			log.info("BitcoindAdapter mempool loaded from DB.");
+			txPoolContainer.setTxPool(memPoolFromDB.get());
+			loadedFrom = LoadedFrom.FROMDB;
+		} else {
+			log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
+					bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
+			appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
+			TxPool txPool = inMemTxPoolFiller.createMemPool();
+			txPoolContainer.setTxPool(txPool);
+			loadedFrom = LoadedFrom.FROMCLIENT;
+		}
+		// It's a nonsense save in DB whatever you have just loaded.
+		if (bitcoindAdapterProperties.isSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
+			log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
+			// TODO: maybe this takes too long and db connection closes after timeout
+			appState.setState(AppStateEnum.SAVINGTODB);
+			memPoolService.saveAllMemPool(txPoolContainer.getTxPool());
+			log.info("BitcoindAdapter mempool saved to DB.");
+		} else {
+			log.info("BitcoindAdapter mempool loaded. NOT saving to DB.");
+		}
+
+		appState.setState(AppStateEnum.STARTED);
+
+		log.info("BitcoindAdapter mempool initializated.");
+		startJob();
 
 	}
 
+	// In case of SchedulerException we cannot recover so we don't get it
 	private void startJob() throws SchedulerException {
 		// We are screwing in DB-jobs because Quartz Jobs serialize JobDataMap. But we
 		// are not using that feature.
 		JobDataMap jobDataMap = new JobDataMap();
 		jobDataMap.put("memPoolContainer", txPoolContainer);
 		jobDataMap.put("lastBlocksContainer", lastBlocksContainer);
-		jobDataMap.put("memPoolChangesContainer", txPoolChangesContainer);
+		jobDataMap.put("txPoolChangesContainer", txPoolChangesContainer);
 		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
 		jobDataMap.put("memPoolService", memPoolService);
 		jobDataMap.put("blockFactory", blockFactory);
@@ -202,6 +192,7 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 		jobDataMap.put("bitcoindClient", bitcoindClient);
 		jobDataMap.put("blockTemplateContainer", blockTemplateContainer);
 		jobDataMap.put("alarmLogger", alarmLogger);
+		jobDataMap.put("state", new MemPoolRefresherJobState());
 
 		JobDetail job = newJob(MemPoolRefresherJob.class).withIdentity("refreshJob", "mempool").setJobData(jobDataMap)
 				.build();
@@ -228,9 +219,9 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	// Just for debug.
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
-//		String str = event.toString();
-//		if (str.contains("kafka") || str.contains("cloud")) {
-//			log.info("ApplicationEvent: " + event.toString());
-//		}
+		// String str = event.toString();
+		// if (str.contains("kafka") || str.contains("cloud")) {
+		// log.info("ApplicationEvent: " + event.toString());
+		// }
 	}
 }

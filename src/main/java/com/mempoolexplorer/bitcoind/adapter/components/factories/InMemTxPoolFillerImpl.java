@@ -56,18 +56,20 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	@Autowired
 	private BitcoindClient bitcoindClient;
 
+	String err = "duplicated txId: {}, this shouldn't be happening";
+
 	final BinaryOperator<Transaction> mergeFunction = (oldTx, newTx) -> {
-		logger.error("duplicated txId: {}, this shouldn't be happening", newTx.getTxId());
+		logger.error(err, newTx.getTxId());
 		return oldTx;
 	};
 
 	final BinaryOperator<Transaction> txBuilderMergeFunction = (oldTx, newTx) -> {
-		logger.error("duplicated txId: {}, this shouldn't be happening", newTx.getTxId());
+		logger.error(err, newTx.getTxId());
 		return oldTx;
 	};
 	// getDepends is the content we use because it's the most distinguishable
 	final BinaryOperator<RawMemPoolEntryData> rawMemPoolVerboseDataMergeFuncion = (oldTx, newTx) -> {
-		logger.error("duplicated txId: {}, this shouldn't be happening", newTx.getDepends());
+		logger.error(err, newTx.getDepends());
 		return oldTx;
 	};
 
@@ -181,8 +183,8 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 				|| (!txa.getAncestorSize().equals(rawMemPoolEntryData.getAncestorsize()))
 				|| (!txa.getDepends().equals(rawMemPoolEntryData.getDepends()))
 				|| (!txa.getSpentby().equals(rawMemPoolEntryData.getSpentby()))
-				|| (!txf.getAncestor().equals(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getAncestor())))
-				|| (!txf.getDescendant().equals(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getDescendant())))
+				|| (!txf.getAncestor().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getAncestor())))
+				|| (!txf.getDescendant().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getDescendant())))
 
 		) {
 			return true;
@@ -203,12 +205,10 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 	private ConcurrentHashMap<String, Transaction> createTxIdToTxMapFrom(
 			Map<String, RawMemPoolEntryData> rawMemPoolVerboseDataMap) {
 
-		ConcurrentHashMap<String, Transaction> txIdToTxMap = rawMemPoolVerboseDataMap.entrySet().stream()
+		return rawMemPoolVerboseDataMap.entrySet().stream()
 				.map((entry) -> TransactionFactory.from(entry.getKey(), entry.getValue()))
 				.collect(Collectors.toMap(Transaction::getTxId, tx -> tx, txBuilderMergeFunction,
 						() -> new ConcurrentHashMap<>(SysProps.EXPECTED_MEMPOOL_SIZE)));
-
-		return txIdToTxMap;
 	}
 
 	/**
@@ -251,7 +251,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		}
 
 		// Delete all transactions which all data could't be obtained.
-		String log = new String();
+		String log = "";
 		if (!withErrorTxIdSet.isEmpty()) {
 			log = "txIds deleted for bitcoind RPC race conditions: ";
 			log += withErrorTxIdSet.stream().collect(Collectors.joining(" ,", "[", "]"));
@@ -315,7 +315,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 			// JSON preserves order. http://www.rfc-editor.org/rfc/rfc7159.txt
 			TxOutput txOutput = new TxOutput();
 			txOutput.setAddressIds(output.getScriptPubKey().getAddresses());
-			txOutput.setAmount(JSONUtils.JSONtoAmount(output.getValue()));
+			txOutput.setAmount(JSONUtils.jsonToAmount(output.getValue()));
 			txOutput.setIndex(output.getN());
 			tx.getTxOutputs().add(txOutput);
 		});
@@ -336,7 +336,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 				TxInput txInput = new TxInput();
 				txInput.setAddressIds(spentTxOutput.getScriptPubKey().getAddresses());
-				txInput.setAmount(JSONUtils.JSONtoAmount(spentTxOutput.getValue()));
+				txInput.setAmount(JSONUtils.jsonToAmount(spentTxOutput.getValue()));
 				txInput.setTxId(input.getTxid());
 				txInput.setVOutIndex(input.getVout());
 				txInput.setCoinbase(input.getCoinbase());

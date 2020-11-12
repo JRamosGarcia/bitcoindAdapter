@@ -8,12 +8,16 @@ import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 
 public class TxAncestryChangesFactory {
 
+	private TxAncestryChangesFactory() {
+		throw new IllegalStateException("Can't instantiate utility class");
+	}
+
 	public static TxAncestryChanges from(RawMemPoolEntryData rawMemPoolEntryData) {
 		Fees fees = new Fees();
-		fees.setAncestor(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getAncestor()));
-		fees.setBase(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getBase()));
-		fees.setDescendant(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getDescendant()));
-		fees.setModified(JSONUtils.JSONtoAmount(rawMemPoolEntryData.getFees().getModified()));
+		fees.setAncestor(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getAncestor()));
+		fees.setBase(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getBase()));
+		fees.setDescendant(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getDescendant()));
+		fees.setModified(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getModified()));
 		TxAncestry txAncestry = new TxAncestry();
 		txAncestry.setAncestorCount(rawMemPoolEntryData.getAncestorcount());
 		txAncestry.setAncestorSize(rawMemPoolEntryData.getAncestorsize());
