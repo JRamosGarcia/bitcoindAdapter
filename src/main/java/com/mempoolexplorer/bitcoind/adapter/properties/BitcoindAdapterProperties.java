@@ -13,9 +13,6 @@ import lombok.Setter;
 public class BitcoindAdapterProperties {
 
 	private int refreshIntervalSec = 5;
-	private boolean loadDBOnStart = true;
-	private boolean saveDBOnStart = true;
-	private boolean saveDBOnRefresh = true;
 	private int memPoolChangesSize = 10;
 	private int newBlockListSize = 3;
 	private boolean sendAllTxOnStart = true;

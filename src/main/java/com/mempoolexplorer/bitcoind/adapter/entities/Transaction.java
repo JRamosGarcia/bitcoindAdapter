@@ -4,12 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
-@Document(collection = "txs")
 public class Transaction {
-	@Id
 	private String txId;
 	private List<TxInput> txInputs = new ArrayList<>();
 	private List<TxOutput> txOutputs = new ArrayList<>();

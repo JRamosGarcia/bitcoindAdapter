@@ -33,7 +33,6 @@ import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChang
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
-import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
 import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
@@ -59,7 +58,6 @@ public class MemPoolRefresherJob implements Job {
 	private LastBlocksContainer lastBlocksContainer;
 	private TxPoolChangesContainer txPoolChangesContainer;
 	private BlockFactory blockFactory;
-	private TxPoolService memPoolService;
 	private TxSource txSource;
 	private TxPoolFiller txPoolFiller;
 	private BitcoindClient bitcoindClient;
@@ -166,10 +164,6 @@ public class MemPoolRefresherJob implements Job {
 			return; // If there is a new block in-between we do not refresh mempool or send diffs
 		}
 		memPoolContainer.getTxPool().apply(txPoolChanges);
-
-		if (bitcoindAdapterProperties.isSaveDBOnRefresh()) {
-			memPoolService.apply(txPoolChanges);
-		}
 
 		// Export changes to REST Service and MsgQueue only if there are changes
 

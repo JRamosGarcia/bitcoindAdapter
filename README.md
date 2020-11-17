@@ -21,15 +21,12 @@ That is, if a new block is detected before checking mempool changes, these chang
 This ensures a message order so message consumers can store the new block transactions before they are removed from mempool in the next message, 
 enabling consumers to compare mined block txs with mempool txs.
 
-BitcoindAdapter uses a mongodb database for (optionally) storing the mempool between shutdowns.
-
 BitcoindAdapter is shutdown friendly. That is, if restarted, then signals kafka clients they have to refresh its mempool. 
 This is done by sending kafka messages with numOrder = 0 containing a maximum of 10 tx each (to avoid kafka message size limit). 
 
 ## Requirements
 
-* bitcoind 0.19.X
-* mongodb
+* bitcoind 0.21
 * java 11
 
 ## Usage
@@ -71,15 +68,6 @@ dbcache=4000
 Interval of mempool refreshing. (a new getrawMempool, getRawTransaction, getBlockCount and getBlockTemplate is made). 
 Only one thread is used for refreshing, if it takes more time than this interval, no other thread will be launch. 
 (to avoid overload and concurrency problems)
-
-* `bitcoindadapter.loadDBOnStart={true|false}`
-Decides if bitcoindAdapter must try to load mempool from db when starting. If not, it will query all mempool txs to bitcoind (it can takes hours). Normally mempool in db will be in part outdated. bitcoindAdapter will use txs which are still in mempool and discard the old ones. This saves a lot of time.
-
-* `bitcoindadapter.saveDBOnStart={true|false}`
-Decides if bitcoindAdapter must save mempool when fully loaded and updated at start.
-
-* `bitcoindadapter.saveDBOnRefresh={true|false}`
-Saves mempool changes in db for each mempool refresh the application does.
 
 * `bitcoindadapter.memPoolChangesSize=10`
 REST API `/memPool/changes` returns last 10 changes in memPool.

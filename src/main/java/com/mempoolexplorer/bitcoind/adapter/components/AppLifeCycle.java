@@ -4,8 +4,6 @@ import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 
-import java.util.Optional;
-
 import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
@@ -23,7 +21,6 @@ import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJob;
 import com.mempoolexplorer.bitcoind.adapter.jobs.MemPoolRefresherJobState;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
-import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
 
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -67,9 +64,6 @@ public class AppLifeCycle {
 	private Scheduler scheduler;
 
 	@Autowired
-	private TxPoolService memPoolService;
-
-	@Autowired
 	private BitcoindAdapterProperties bitcoindAdapterProperties;
 
 	@Autowired
@@ -99,10 +93,6 @@ public class AppLifeCycle {
 
 	@Value("${spring.cloud.stream.bindings.txMemPoolEvents.destination}")
 	private String topic;
-
-	private enum LoadedFrom {
-		FROMDB, FROMCLIENT
-	}
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void onApplicationReadyEvent(ApplicationReadyEvent event) throws SchedulerException, TxPoolException {
@@ -136,22 +126,10 @@ public class AppLifeCycle {
 		}
 	}
 
-	// in case of debug.
-	// add implements ApplicationListener<ApplicationEvent>
-	// @Override
-	// public void onApplicationEvent(ApplicationEvent event) {
-	// String str = event.toString();
-	// if (str.contains("kafka") || str.contains("cloud")) {
-	// log.info("ApplicationEvent: " + event.toString());
-	// }
-	// }
-
 	public void checkInitialization() throws SchedulerException, TxPoolException {
-		if (onApplicationReadyEvent && onBindingCreatedEvent) {
-			if (!hasInitializated) {
-				hasInitializated = true;
-				initialization();
-			}
+		if (onApplicationReadyEvent && onBindingCreatedEvent && !hasInitializated) {
+			hasInitializated = true;
+			initialization();
 		}
 	}
 
@@ -161,41 +139,14 @@ public class AppLifeCycle {
 	public void initialization() throws SchedulerException, TxPoolException {
 
 		log.info("Initializating bitcoindAdapter Mempool...");
-		Optional<TxPool> memPoolFromDB = Optional.empty();
-		if (bitcoindAdapterProperties.isLoadDBOnStart()) {
-			appState.setState(AppStateEnum.LOADINGFROMDB);
-			memPoolFromDB = memPoolService.loadTxPoolFromDB();
-		}
-
-		LoadedFrom loadedFrom;
-		if (memPoolFromDB.isPresent()) {
-			log.info("BitcoindAdapter mempool loaded from DB.");
-			txPoolContainer.setTxPool(memPoolFromDB.get());
-			loadedFrom = LoadedFrom.FROMDB;
-		} else {
-			log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
-					bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
-			appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
-			TxPool txPool = inMemTxPoolFiller.createMemPool();
-			txPoolContainer.setTxPool(txPool);
-			loadedFrom = LoadedFrom.FROMCLIENT;
-		}
-		// It's a nonsense save in DB whatever you have just loaded.
-		if (bitcoindAdapterProperties.isSaveDBOnStart() && loadedFrom.equals(LoadedFrom.FROMCLIENT)) {
-			log.info("BitcoindAdapter mempool loaded. Now saving to DB.");
-			// TODO: maybe this takes too long and db connection closes after timeout
-			appState.setState(AppStateEnum.SAVINGTODB);
-			memPoolService.saveAllMemPool(txPoolContainer.getTxPool());
-			log.info("BitcoindAdapter mempool saved to DB.");
-		} else {
-			log.info("BitcoindAdapter mempool loaded. NOT saving to DB.");
-		}
-
+		log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
+				bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
+		appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
+		TxPool txPool = inMemTxPoolFiller.createMemPool();
+		txPoolContainer.setTxPool(txPool);
 		appState.setState(AppStateEnum.STARTED);
-
 		log.info("BitcoindAdapter mempool initializated.");
 		startJob();
-
 	}
 
 	// In case of SchedulerException we cannot recover so we don't get it
@@ -207,7 +158,6 @@ public class AppLifeCycle {
 		jobDataMap.put("lastBlocksContainer", lastBlocksContainer);
 		jobDataMap.put("txPoolChangesContainer", txPoolChangesContainer);
 		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
-		jobDataMap.put("memPoolService", memPoolService);
 		jobDataMap.put("blockFactory", blockFactory);
 		jobDataMap.put("txSource", txSource);
 		jobDataMap.put("txPoolFiller", inMemTxPoolFiller);
