@@ -6,26 +6,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 import java.util.Optional;
 
-import javax.annotation.PreDestroy;
-
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.Trigger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.cloud.stream.binder.Binding;
-import org.springframework.cloud.stream.binder.BindingCreatedEvent;
-import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
-
 import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
@@ -45,9 +25,26 @@ import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 import com.mempoolexplorer.bitcoind.adapter.services.TxPoolService;
 
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cloud.stream.binder.Binding;
+import org.springframework.cloud.stream.binder.BindingCreatedEvent;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
 @Component
 @Profile(value = { AppProfiles.DEV, AppProfiles.PROD })
-public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
+public class AppLifeCycle {
 
 	private static Logger log = LoggerFactory.getLogger(AppLifeCycle.class);
 
@@ -93,18 +90,18 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 	@Autowired
 	private AlarmLogger alarmLogger;
 
+	// It seems that Spring aplicaton events are thrown more than once, so these are
+	// the flags to avoid calling clean-up methods more than once.
 	private boolean hasInitializated = false;// Avoids intialization more than once
-
 	private boolean onApplicationReadyEvent = false;
-
 	private boolean onBindingCreatedEvent = false;
+	private boolean onContextClosedEvent = false;
 
 	@Value("${spring.cloud.stream.bindings.txMemPoolEvents.destination}")
 	private String topic;
 
 	private enum LoadedFrom {
 		FROMDB, FROMCLIENT
-
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
@@ -123,6 +120,31 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 			checkInitialization();
 		}
 	}
+
+	// @PreDestroy This is not good, better use this:
+	@EventListener(ContextClosedEvent.class)
+	public void finalization() {
+		if (!onContextClosedEvent) {
+			onContextClosedEvent = true;
+			log.info("Shuting down bitcoindAdapter scheduler...");
+			try {
+				scheduler.shutdown();
+			} catch (SchedulerException e) {
+				log.error("Error shutting down scheduller, exception: ", e);
+			}
+			log.info("BitcoindAdapter scheduler shutdown complete.");
+		}
+	}
+
+	// in case of debug.
+	// add implements ApplicationListener<ApplicationEvent>
+	// @Override
+	// public void onApplicationEvent(ApplicationEvent event) {
+	// String str = event.toString();
+	// if (str.contains("kafka") || str.contains("cloud")) {
+	// log.info("ApplicationEvent: " + event.toString());
+	// }
+	// }
 
 	public void checkInitialization() throws SchedulerException, TxPoolException {
 		if (onApplicationReadyEvent && onBindingCreatedEvent) {
@@ -205,23 +227,4 @@ public class AppLifeCycle implements ApplicationListener<ApplicationEvent> {
 		scheduler.start();
 	}
 
-	@PreDestroy
-	public void finalization() {
-		log.info("Finalizing bitcoindAdapter Mempool...");
-		try {
-			scheduler.shutdown();
-		} catch (SchedulerException e) {
-			log.error("Error shutting down scheduller, exception: ", e);
-		}
-		log.info("BitcoindAdapter mempool finalized.");
-	}
-
-	// Just for debug.
-	@Override
-	public void onApplicationEvent(ApplicationEvent event) {
-		// String str = event.toString();
-		// if (str.contains("kafka") || str.contains("cloud")) {
-		// log.info("ApplicationEvent: " + event.toString());
-		// }
-	}
 }
