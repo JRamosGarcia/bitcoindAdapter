@@ -113,7 +113,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		TxPoolChanges txpc = obtainMemPoolChangesNoProfilling(txPool);
 		Instant end = Instant.now();
 		Duration duration = Duration.between(start, end);
-		logger.info("Diff ha tardado: {}", duration.toString());
+		logger.info("Diff ha tardado: {}", duration);
 		return txpc;
 	}
 
@@ -224,7 +224,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		Set<String> withErrorTxIdSet = new HashSet<>();
 
 		int count = 0;
-		PercentLog pl = new PercentLog(txIdToTxMap.size());
+		PercentLog pl = new PercentLog(txIdToTxMap.size(), 1);
 
 		// There is no gain making this parallel via java 8 parallelStream due to:
 		// https://bitcoin.stackexchange.com/questions/89066/how-to-scale-json-rpc
@@ -236,7 +236,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 
 			logger.debug("Obtained tx number: {} rawTx: {}", count, entry.getKey());
 			if (logIt) {
-				pl.update(count, (percent) -> logger.info("adding additional data to txs... {}", percent));
+				pl.update(count, (percent) -> logger.info("Adding additional data to txs... {}", percent));
 			}
 			if (null == rawTx.getError()) {
 				// Add more data via getRawTransaction, be aware more txIds can be added to
@@ -255,7 +255,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		if (!withErrorTxIdSet.isEmpty()) {
 			log = "txIds deleted for bitcoind RPC race conditions: ";
 			log += withErrorTxIdSet.stream().collect(Collectors.joining(" ,", "[", "]"));
-			logger.warn(log);// This can happen exceptionally, we track it.
+			logger.warn(log);// This can happen frequently when mempool is "full", we track it.
 		}
 		withErrorTxIdSet.stream().forEach(key -> txIdToTxMap.remove(key));
 	}
@@ -351,10 +351,19 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 		}
 	}
 
-	// This can happen exceptionally, we track it.
+	// This can happen because there is a big gap in timebetween getrawmempool and
+	// each getrawTransaction when mempool is "full", we track it.
 	private void logWarnOnTransactionWithError(GetVerboseRawTransactionResult rawTx, String incompleteTxId) {
-		String error = rawTx == null ? "GetVerboseRawTransactionResult is null"
-				: (rawTx.getError() == null ? "GetVerboseRawTransactionResult is null" : rawTx.getError().toString());
-		logger.warn("Error retrieving txId: " + incompleteTxId + " error: " + error);
+		String error;
+		if (rawTx == null) {
+			error = "GetVerboseRawTransactionResult is null";
+		} else {
+			if (rawTx.getError() == null) {
+				error = "GetVerboseRawTransactionResult error is null";
+			} else {
+				error = rawTx.getError().toString();
+			}
+		}
+		logger.warn("Error retrieving txId: {} error: {}", incompleteTxId, error);
 	}
 }

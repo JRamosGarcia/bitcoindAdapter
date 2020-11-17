@@ -3,6 +3,9 @@ package com.mempoolexplorer.bitcoind.adapter;
 import java.net.URISyntaxException;
 import java.time.Clock;
 
+import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
+import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
+
 import org.quartz.SchedulerFactory;
 import org.quartz.impl.StdSchedulerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-
-import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
-import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
 @SpringBootApplication
 public class BitcoindAdapterApplication {
