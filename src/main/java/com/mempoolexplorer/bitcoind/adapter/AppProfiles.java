@@ -1,6 +1,9 @@
 package com.mempoolexplorer.bitcoind.adapter;
 
 public class AppProfiles {
+	private AppProfiles() {
+		throw new IllegalStateException("Can't instatiate utility class");
+	}
 
 	public static final String DEV = "dev";
 	public static final String PROD = "prod";

@@ -23,7 +23,9 @@ public class BitcoindAdapterApplication {
 	@Autowired
 	private BitcoindProperties bitcoindProperties;
 
-	// Where really things are done: AppLifeCyle and MemPoolRefresherJob
+	// TODO: modify this comment
+	// Things are done in AppLifeCyle and MemPoolRefresherJob classes.
+	// This is to avoid instantiate class that spawns threads when testing
 	public static void main(String[] args) {
 		SpringApplication app = new SpringApplication(BitcoindAdapterApplication.class);
 		app.run(args);

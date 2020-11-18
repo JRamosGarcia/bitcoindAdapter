@@ -4,7 +4,6 @@ import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 
-import com.mempoolexplorer.bitcoind.adapter.AppProfiles;
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
@@ -34,13 +33,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.BindingCreatedEvent;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
-@Component
-@Profile(value = { AppProfiles.DEV, AppProfiles.PROD })
+//@Component
+//@Profile(value = { AppProfiles.DEV, AppProfiles.PROD })
 public class AppLifeCycle {
 
 	private static Logger log = LoggerFactory.getLogger(AppLifeCycle.class);
