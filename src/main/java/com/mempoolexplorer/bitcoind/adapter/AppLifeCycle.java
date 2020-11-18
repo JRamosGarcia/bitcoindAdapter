@@ -91,6 +91,7 @@ public class AppLifeCycle {
     private void initialization() {
         log.info("bitcoinAdapter ZMQ receiver and consumer are starting...");
         // We keep the blockingQueue private among producer and consumer.
+        // No size limit. Should be enough fast to not get "full"
         BlockingQueue<MempoolSeqEvent> blockingQueue = new LinkedBlockingQueue<>();
         zmqSequenceEventConsumer.setBlockingQueue(blockingQueue);
         zmqSequenceEventReceiver.setBlockingQueue(blockingQueue);

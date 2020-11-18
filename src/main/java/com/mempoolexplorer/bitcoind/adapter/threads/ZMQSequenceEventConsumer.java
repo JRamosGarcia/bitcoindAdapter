@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * TODO: insert your comment here
+ * TODO: Insert class comment here
  */
 @Component
 @Slf4j

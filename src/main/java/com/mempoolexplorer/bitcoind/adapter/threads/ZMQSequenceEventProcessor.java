@@ -6,8 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Interface that defines a ZMQ sequence event processor. As a producer or as a
- * consumer a ZMQSequenceEventProcessor shares a blockingQueue. shutdown method
- * blocks until shutdown is complete.
+ * consumer a ZMQSequenceEventProcessor shares a blockingQueue.
  */
 @Slf4j
 public abstract class ZMQSequenceEventProcessor implements Runnable {

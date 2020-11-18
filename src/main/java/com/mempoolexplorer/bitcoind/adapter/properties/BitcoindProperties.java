@@ -24,4 +24,6 @@ public class BitcoindProperties {
 	private String host;
 
 	private String rpcPort;
+
+	private String zmqPort;
 }

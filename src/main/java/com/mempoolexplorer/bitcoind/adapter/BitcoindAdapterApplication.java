@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -23,12 +24,18 @@ public class BitcoindAdapterApplication {
 	@Autowired
 	private BitcoindProperties bitcoindProperties;
 
+	private static ConfigurableApplicationContext springAppContext;
+
 	// TODO: modify this comment
 	// Things are done in AppLifeCyle and MemPoolRefresherJob classes.
 	// This is to avoid instantiate class that spawns threads when testing
 	public static void main(String[] args) {
 		SpringApplication app = new SpringApplication(BitcoindAdapterApplication.class);
-		app.run(args);
+		springAppContext = app.run(args);
+	}
+
+	public static void exit() {
+		SpringApplication.exit(springAppContext, () -> 1);
 	}
 
 	@Bean
