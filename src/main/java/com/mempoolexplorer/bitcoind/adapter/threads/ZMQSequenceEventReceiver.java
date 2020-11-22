@@ -19,6 +19,7 @@ import org.zeromq.ZMQException;
 import org.zeromq.ZMsg;
 
 import lombok.extern.slf4j.Slf4j;
+import zmq.ZError;
 
 /**
  * Receives ZMQ sequence events and enqueue them. I prefer this approach of
@@ -42,8 +43,7 @@ public class ZMQSequenceEventReceiver extends ZMQSequenceEventProcessor {
 
     @Override
     protected void doYourThing() throws InterruptedException {
-        try (ZContext context = new ZContext()) {
-            ZMQ.Socket socket = context.createSocket(SocketType.SUB);
+        try (ZContext context = new ZContext(); ZMQ.Socket socket = context.createSocket(SocketType.SUB);) {
             boolean connected = socket
                     .connect("tcp://" + bitcoindProperties.getHost() + ":" + bitcoindProperties.getZmqPort());
             if (!connected) {
@@ -112,7 +112,8 @@ public class ZMQSequenceEventReceiver extends ZMQSequenceEventProcessor {
             }
             log.info("Out of main loop ");
         } catch (ZMQException e) {
-            if (e.getErrorCode() == 4) {
+            // ZError.EINTR when thread waiting in socket has been interrupted.
+            if (e.getErrorCode() == ZError.EINTR) {
                 log.info("Thread interrupted for shutdown. (ZMsg.recvMsg(socket) interrupted.)");
             } else {
                 throw e;
