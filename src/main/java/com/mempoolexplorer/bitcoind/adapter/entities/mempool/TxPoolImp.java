@@ -5,30 +5,40 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxAncestryChanges;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TxPoolImp implements TxPool {
 
 	Logger logger = LoggerFactory.getLogger(TxPoolImp.class);
 
 	private ConcurrentHashMap<String, Transaction> txIdToTxMap = new ConcurrentHashMap<>();
+	private int mempoolSequence = 0;
 
 	public TxPoolImp() {
 	}
 
 	public TxPoolImp(ConcurrentHashMap<String, Transaction> txIdToTxMap) {
-
 		this.txIdToTxMap = txIdToTxMap;
+	}
+
+	public TxPoolImp(ConcurrentHashMap<String, Transaction> txIdToTxMap, int mempoolSequence) {
+		this.txIdToTxMap = txIdToTxMap;
+		this.mempoolSequence = mempoolSequence;
+	}
+
+	@Override
+	public void apply(TxPoolChanges txPoolChanges, int mempoolSequence) {
+		apply(txPoolChanges);
+		this.mempoolSequence = mempoolSequence;
 	}
 
 	@Override
 	public void apply(TxPoolChanges txPoolChanges) {
-
 		removeTxs(txPoolChanges.getRemovedTxsId());
 		addTxs(txPoolChanges.getNewTxs());
 		updateTxs(txPoolChanges.getTxAncestryChangesMap());
@@ -50,7 +60,7 @@ public class TxPoolImp implements TxPool {
 	}
 
 	@Override
-	public Integer getSize() {
+	public int getSize() {
 		return txIdToTxMap.size();
 	}
 
@@ -65,7 +75,8 @@ public class TxPoolImp implements TxPool {
 
 	@Override
 	public void drop() {
-		txIdToTxMap.clear();
+		txIdToTxMap = new ConcurrentHashMap<>();
+		mempoolSequence = 0;
 	}
 
 	private void updateTx(Transaction toUpdateTx, TxAncestryChanges txac) {
@@ -79,6 +90,11 @@ public class TxPoolImp implements TxPool {
 
 	private void addTxs(List<Transaction> txsListToAdd) {
 		txsListToAdd.stream().forEach(tx -> txIdToTxMap.put(tx.getTxId(), tx));
+	}
+
+	@Override
+	public int getMempoolSequence() {
+		return mempoolSequence;
 	}
 
 }

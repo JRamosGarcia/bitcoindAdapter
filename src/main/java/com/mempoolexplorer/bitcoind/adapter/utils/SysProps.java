@@ -2,6 +2,10 @@ package com.mempoolexplorer.bitcoind.adapter.utils;
 
 public class SysProps {
 
+	private SysProps() {
+		throw new IllegalStateException("Utility class");
+	}
+
 	public static final String NL = System.getProperty("line.separator");
 	public static final float BEST_LOAD_FACTOR = 0.75f;// https://javaconceptoftheday.com/initial-capacity-and-load-factor-of-hashmap-in-java/
 	public static final int EXPECTED_NUM_TX_IN_BLOCK = 5000;

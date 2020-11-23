@@ -1,5 +1,7 @@
 package com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Getter;
@@ -11,9 +13,12 @@ import lombok.ToString;
 @Setter
 @ToString
 @NoArgsConstructor
-public class GetRawMemPoolNonVerbose extends BitcoindResult {
+public class GetRawMemPoolNonVerboseData {
 
-	@JsonProperty("result")
-	private GetRawMemPoolNonVerboseData getRawMemPoolNonVerboseData;
-	
+    @JsonProperty("txids")
+    List<String> trxHashList;
+
+    @JsonProperty("mempool_sequence")
+    int mempoolSequence;
+
 }

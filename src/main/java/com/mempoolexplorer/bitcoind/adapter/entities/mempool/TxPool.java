@@ -8,6 +8,9 @@ import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChang
 
 public interface TxPool {
 
+	// Apply may change mempoolSequence or not.(i.e. changes for connected/disconnected block)
+	void apply(TxPoolChanges txPoolChanges, int mempoolSequence);
+
 	void apply(TxPoolChanges txPoolChanges);
 
 	Set<String> getTxIdSet();
@@ -18,7 +21,9 @@ public interface TxPool {
 	// be huge.
 	Map<String, Transaction> getFullTxPool();
 
-	Integer getSize();
+	int getSize();
+
+	int getMempoolSequence();
 
 	void drop();
 }
