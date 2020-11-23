@@ -19,7 +19,7 @@ import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.LongPoollingTxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
@@ -55,7 +55,7 @@ public class MemPoolRefresherJob implements Job {
 	private TxPoolContainer memPoolContainer;
 	private BlockFactory blockFactory;
 	private TxSource txSource;
-	private TxPoolFiller txPoolFiller;
+	private LongPoollingTxPoolFiller txPoolFiller;
 	private BitcoindClient bitcoindClient;
 	private BlockTemplateContainer blockTemplateContainer;
 	private BitcoindAdapterProperties bitcoindAdapterProperties;

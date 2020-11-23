@@ -9,7 +9,7 @@ import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFillerImpl;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.LongPoollingTxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
@@ -47,7 +47,7 @@ public class AppLifeCycle {
 	private BlockFactory blockFactory;
 
 	@Autowired
-	private TxPoolFillerImpl inMemTxPoolFiller;
+	private LongPoollingTxPoolFillerImpl txPoolFiller;
 
 	@Autowired
 	private Scheduler scheduler;
@@ -131,7 +131,7 @@ public class AppLifeCycle {
 		log.info("BitcoindAdapter mempool loading from bitcoind client at ip: {}:{} .It will take sometime",
 				bitcoindProperties.getHost(), bitcoindProperties.getRpcPort());
 		appState.setState(AppStateEnum.LOADINGFROMBITCOINCLIENT);
-		TxPool txPool = inMemTxPoolFiller.createMemPool();
+		TxPool txPool = txPoolFiller.createMemPool();
 		txPoolContainer.setTxPool(txPool);
 		appState.setState(AppStateEnum.STARTED);
 		log.info("BitcoindAdapter mempool initializated.");
@@ -147,7 +147,7 @@ public class AppLifeCycle {
 		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
 		jobDataMap.put("blockFactory", blockFactory);
 		jobDataMap.put("txSource", txSource);
-		jobDataMap.put("txPoolFiller", inMemTxPoolFiller);
+		jobDataMap.put("txPoolFiller", txPoolFiller);
 		jobDataMap.put("bitcoindClient", bitcoindClient);
 		jobDataMap.put("blockTemplateContainer", blockTemplateContainer);
 		jobDataMap.put("alarmLogger", alarmLogger);

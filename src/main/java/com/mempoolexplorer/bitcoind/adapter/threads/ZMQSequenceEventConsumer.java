@@ -47,23 +47,31 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         while (!endThread) {
             MempoolSeqEvent event = null;
             event = blockingQueue.take();
-            log.info("This is the event: {}", event);
-            treatEvent(event);
+            log.debug("This is the event: {}", event);
+            onEvent(event);
         }
     }
 
-    private void treatEvent(MempoolSeqEvent event) {
-        // Bitcoind is starting while we are already up
+    private void onEvent(MempoolSeqEvent event) {
         if (isStarting && event.getZmqSequence() == 0) {
-            // Maybe bitcoind has gone down and we are up. Reset mempool and containers.
-            resetContainers();
+            // Bitcoind is starting while we are already up
+            resetContainers();// in case of bitcoind crash
+            isStarting = false;
+        } else if (isStarting && (event.getZmqSequence() != 0)) {
+            // Bitcoind is already working, ask for full mempool and mempoolSequence
+
             isStarting = false;
         }
+        treatEvent(event);
+    }
+
+    private void treatEvent(MempoolSeqEvent event) {
+        //TODO:
     }
 
     private void resetContainers() {
         txPoolContainer.getTxPool().drop();
-        //BlockTemplateContainer no 
+        // BlockTemplateContainer no needs to reset
     }
 
 }

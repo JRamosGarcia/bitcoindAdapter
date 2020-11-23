@@ -4,7 +4,7 @@ import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPo
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
-public interface TxPoolFiller {
+public interface LongPoollingTxPoolFiller {
 
 	TxPool createMemPool() throws TxPoolException;
 

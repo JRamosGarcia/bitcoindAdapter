@@ -44,9 +44,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 
 @Component
-public class TxPoolFillerImpl implements TxPoolFiller {
+public class LongPoollingTxPoolFillerImpl implements LongPoollingTxPoolFiller {
 
-	Logger logger = LoggerFactory.getLogger(TxPoolFillerImpl.class);
+	Logger logger = LoggerFactory.getLogger(LongPoollingTxPoolFillerImpl.class);
 
 	@Autowired
 	private Clock clock;
