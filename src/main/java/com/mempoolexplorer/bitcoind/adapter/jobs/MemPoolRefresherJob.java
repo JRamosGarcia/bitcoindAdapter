@@ -16,10 +16,8 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerbose
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResultData;
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
@@ -55,8 +53,6 @@ public class MemPoolRefresherJob implements Job {
 
 	// Inserted through Quartz Scheduler. Not Spring Container.
 	private TxPoolContainer memPoolContainer;
-	private LastBlocksContainer lastBlocksContainer;
-	private TxPoolChangesContainer txPoolChangesContainer;
 	private BlockFactory blockFactory;
 	private TxSource txSource;
 	private TxPoolFiller txPoolFiller;
@@ -96,7 +92,6 @@ public class MemPoolRefresherJob implements Job {
 
 			Block block = blockFactory.from(getBlockResult.getGetBlockResultData());
 			addNotInMemPoolTxsOf(block);
-			lastBlocksContainer.add(block);
 			txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
 		}
 	}
@@ -182,7 +177,6 @@ public class MemPoolRefresherJob implements Job {
 		} else {
 			if (txPoolChanges.hasChanges()) {
 				BlockTemplateChanges blockTemplateChanges = calculateBlockTemplateChanges(getBlockTemplateResultData);
-				txPoolChangesContainer.add(txPoolChanges);
 				logger.info("Mempool Refreshed, sending msg txPoolChanges({}) to msgQueue",
 						txPoolChanges.getChangeCounter());
 				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPoolChanges, Optional.of(blockTemplateChanges)));

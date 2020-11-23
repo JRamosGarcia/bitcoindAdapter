@@ -32,8 +32,9 @@ public class BitcoindClientImpl implements BitcoindClient {
 		BooleanArrayParamRequest boolParams = new BooleanArrayParamRequest();
 		boolParams.setId("2");
 		boolParams.setMethod("getrawmempool");
-		List<Boolean> params = new ArrayList<Boolean>();
+		List<Boolean> params = new ArrayList<>();
 		params.add(false);
+		params.add(true);
 		boolParams.setParams(params);
 
 		return restTemplate.postForObject("/", boolParams, GetRawMemPoolNonVerbose.class);
@@ -44,7 +45,7 @@ public class BitcoindClientImpl implements BitcoindClient {
 		BooleanArrayParamRequest boolParams = new BooleanArrayParamRequest();
 		boolParams.setId("3");
 		boolParams.setMethod("getrawmempool");
-		List<Boolean> params = new ArrayList<Boolean>();
+		List<Boolean> params = new ArrayList<>();
 		params.add(true);
 		boolParams.setParams(params);
 
@@ -57,7 +58,7 @@ public class BitcoindClientImpl implements BitcoindClient {
 
 		objectParams.setId("4");
 		objectParams.setMethod("getblocktemplate");
-		objectParams.setParams(new ArrayList<Object>());
+		objectParams.setParams(new ArrayList<>());
 		GetBlockTemplateRulesParams rulesParams = new GetBlockTemplateRulesParams();
 		rulesParams.getRules().add("segwit");
 		objectParams.getParams().add(rulesParams);
@@ -71,7 +72,7 @@ public class BitcoindClientImpl implements BitcoindClient {
 
 		stringParams.setId("5");
 		stringParams.setMethod("getmempoolinfo");
-		stringParams.setParams(new ArrayList<String>());
+		stringParams.setParams(new ArrayList<>());
 
 		return restTemplate.postForObject("/", stringParams, GetMemPoolInfo.class);
 	}
@@ -95,7 +96,7 @@ public class BitcoindClientImpl implements BitcoindClient {
 		StringArrayParamRequest stringParams = new StringArrayParamRequest();
 		stringParams.setId("7");
 		stringParams.setMethod("getblockcount");
-		stringParams.setParams(new ArrayList<String>());
+		stringParams.setParams(new ArrayList<>());
 
 		return restTemplate.postForObject("/", stringParams, GetBlockCount.class).getBlockNumber();
 	}

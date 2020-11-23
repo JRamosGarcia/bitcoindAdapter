@@ -19,4 +19,6 @@ public interface TxPool {
 	Map<String, Transaction> getFullTxPool();
 
 	Integer getSize();
+
+	void drop();
 }

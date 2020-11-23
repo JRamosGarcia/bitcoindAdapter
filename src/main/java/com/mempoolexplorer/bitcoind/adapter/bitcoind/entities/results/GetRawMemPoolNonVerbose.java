@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-
 @Getter
 @Setter
 @ToString
@@ -19,4 +18,6 @@ public class GetRawMemPoolNonVerbose extends BitcoindResult {
 	@JsonProperty("result")
 	List<String> trxHashList;
 
+	@JsonProperty("mempool_sequence")
+	int mempoolSequence;
 }

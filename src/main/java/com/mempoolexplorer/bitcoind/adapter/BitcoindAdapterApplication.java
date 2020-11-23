@@ -26,9 +26,8 @@ public class BitcoindAdapterApplication {
 
 	private static ConfigurableApplicationContext springAppContext;
 
-	// TODO: modify this comment
-	// Things are done in AppLifeCyle and MemPoolRefresherJob classes.
-	// This is to avoid instantiate class that spawns threads when testing
+	// Things are done in AppLifeCyle class. This is to avoid instantiate class that
+	// spawns threads when testing
 	public static void main(String[] args) {
 		SpringApplication app = new SpringApplication(BitcoindAdapterApplication.class);
 		springAppContext = app.run(args);

@@ -60,6 +60,11 @@ public class InMemoryTxPoolImp implements TxPool {
 		});
 	}
 
+	@Override
+	public void drop() {
+		txIdToTxMap.clear();
+	}
+
 	private void updateTx(Transaction toUpdateTx, TxAncestryChanges txac) {
 		toUpdateTx.setTxAncestry(txac.getTxAncestry());
 		toUpdateTx.setFees(txac.getFees());

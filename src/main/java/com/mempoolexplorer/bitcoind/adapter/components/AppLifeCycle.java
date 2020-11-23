@@ -6,10 +6,8 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.blockchain.changes.LastBlocksContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.changes.TxPoolChangesContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
@@ -44,12 +42,6 @@ public class AppLifeCycle {
 
 	@Autowired
 	private TxPoolContainer txPoolContainer;
-
-	@Autowired
-	private LastBlocksContainer lastBlocksContainer;
-
-	@Autowired
-	private TxPoolChangesContainer txPoolChangesContainer;
 
 	@Autowired
 	private BlockFactory blockFactory;
@@ -152,8 +144,6 @@ public class AppLifeCycle {
 		// are not using that feature.
 		JobDataMap jobDataMap = new JobDataMap();
 		jobDataMap.put("memPoolContainer", txPoolContainer);
-		jobDataMap.put("lastBlocksContainer", lastBlocksContainer);
-		jobDataMap.put("txPoolChangesContainer", txPoolChangesContainer);
 		jobDataMap.put("bitcoindAdapterProperties", bitcoindAdapterProperties);
 		jobDataMap.put("blockFactory", blockFactory);
 		jobDataMap.put("txSource", txSource);
