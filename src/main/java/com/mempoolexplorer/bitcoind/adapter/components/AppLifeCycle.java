@@ -9,7 +9,7 @@ import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.BlockFactory;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.InMemTxPoolFillerImpl;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFillerImpl;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.AppStateEnum;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
@@ -47,7 +47,7 @@ public class AppLifeCycle {
 	private BlockFactory blockFactory;
 
 	@Autowired
-	private InMemTxPoolFillerImpl inMemTxPoolFiller;
+	private TxPoolFillerImpl inMemTxPoolFiller;
 
 	@Autowired
 	private Scheduler scheduler;

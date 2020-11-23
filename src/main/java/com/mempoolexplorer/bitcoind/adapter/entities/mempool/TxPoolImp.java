@@ -12,13 +12,16 @@ import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxAncestryChanges;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 
-public class InMemoryTxPoolImp implements TxPool {
+public class TxPoolImp implements TxPool {
 
-	Logger logger = LoggerFactory.getLogger(InMemoryTxPoolImp.class);
+	Logger logger = LoggerFactory.getLogger(TxPoolImp.class);
 
 	private ConcurrentHashMap<String, Transaction> txIdToTxMap = new ConcurrentHashMap<>();
 
-	public InMemoryTxPoolImp(ConcurrentHashMap<String, Transaction> txIdToTxMap) {
+	public TxPoolImp() {
+	}
+
+	public TxPoolImp(ConcurrentHashMap<String, Transaction> txIdToTxMap) {
 
 		this.txIdToTxMap = txIdToTxMap;
 	}

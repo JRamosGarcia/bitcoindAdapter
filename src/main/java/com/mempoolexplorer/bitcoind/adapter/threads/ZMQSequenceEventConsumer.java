@@ -63,7 +63,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private void resetContainers() {
         txPoolContainer.getTxPool().drop();
-
+        //BlockTemplateContainer no 
     }
 
 }

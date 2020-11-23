@@ -27,8 +27,8 @@ import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxAncestry;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxInput;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxOutput;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.InMemoryTxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
 import com.mempoolexplorer.bitcoind.adapter.metrics.annotations.ProfileTime;
@@ -44,9 +44,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 
 @Component
-public class InMemTxPoolFillerImpl implements TxPoolFiller {
+public class TxPoolFillerImpl implements TxPoolFiller {
 
-	Logger logger = LoggerFactory.getLogger(InMemTxPoolFillerImpl.class);
+	Logger logger = LoggerFactory.getLogger(TxPoolFillerImpl.class);
 
 	@Autowired
 	private Clock clock;
@@ -100,7 +100,7 @@ public class InMemTxPoolFillerImpl implements TxPoolFiller {
 					rawMemPoolVerbose.getRawMemPoolEntryDataMap());
 			addAdditionalData(txIdToTxMap, true);
 
-			return new InMemoryTxPoolImp(txIdToTxMap);
+			return new TxPoolImp(txIdToTxMap);
 		} catch (ResourceAccessException e) {
 			throw new TxPoolException("Error: Can't connect to bitcoindClient", e);
 		}
