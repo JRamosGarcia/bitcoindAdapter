@@ -3,7 +3,6 @@ package com.mempoolexplorer.bitcoind.adapter.threads;
 import java.util.function.Supplier;
 
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
-import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
@@ -53,7 +52,6 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private boolean isStarting = true;
     private int lastZMQSequence = -1;
-    private boolean isLastEventaBlock = false;// When last event was block connection or disconnection
 
     @Override
     protected void doYourThing() throws InterruptedException {
@@ -104,75 +102,32 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
         switch (event.getEvent()) {
             case TXADD:
-                onTxAdd(event);
-                break;
             case TXDEL:
-                onTxDel(event);
+                onTx(event);
                 break;
             case BLOCKCON:
-                onBlockConnection(event);
-                break;
             case BLOCKDIS:
-                onBlockDisconnection(event);
+                onBlock(event);
                 break;
             default:
                 throw new IllegalArgumentException("unrecognized event type");
         }
     }
 
-    private void onTxAdd(MempoolSeqEvent event) throws TxPoolException {
+    private void onTx(MempoolSeqEvent event) throws TxPoolException {
         // Events can be discarded if currentMPS >= eventMPS
-        // Also if mempoolSeqEvent has gaps. We restart (full reset)
-        // eventIsOk has side effects when gaps occur
-        if (!eventMPSIsOk(event)) {
-            return;
-        }
-        log.debug(event.toString());
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
-        int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
-        txPoolContainer.getTxPool().apply(txPoolChanges, eventMPS);
-        isLastEventaBlock = false;
-    }
-
-    private void onTxDel(MempoolSeqEvent event) throws TxPoolException {
-        // Events can be discarded if currentMPS >= eventMPS
-        // Also if mempoolSeqEvent has gaps. We restart (full reset)
-        // eventIsOk has side effects when gaps occur
-        if (!eventMPSIsOk(event)) {
-            return;
-        }
-        log.debug(event.toString());
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
-        int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
-        txPoolContainer.getTxPool().apply(txPoolChanges, eventMPS);
-        isLastEventaBlock = false;
-    }
-
-    private void onBlockConnection(MempoolSeqEvent event) {
-        // No mempoolSequence for block events
-        log.debug(event.toString());
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
-        txPoolContainer.getTxPool().apply(txPoolChanges);
-        isLastEventaBlock = true;
-    }
-
-    private void onBlockDisconnection(MempoolSeqEvent event) {
-        // No mempoolSequence for block events
-        log.debug(event.toString());
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
-        txPoolContainer.getTxPool().apply(txPoolChanges);
-        isLastEventaBlock = true;
-    }
-
-    private boolean eventMPSIsOk(MempoolSeqEvent event) throws TxPoolException {
         if (discardEventAndLogIt(event)) {
-            return false;
+            return;
         }
-        if (errorInMempoolSequence(event)) {
-            onErrorInMempoolSequence(event);
-            return false;
-        }
-        return true;
+        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
+        int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
+        txPoolContainer.getTxPool().apply(txPoolChanges, eventMPS);
+    }
+
+    private void onBlock(MempoolSeqEvent event) {
+        // No mempoolSequence for block events
+        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
+        txPoolContainer.getTxPool().apply(txPoolChanges);
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {
@@ -199,27 +154,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         fullReset();
     }
 
-    private void onErrorInMempoolSequence(MempoolSeqEvent event) throws TxPoolException {
-        // Somehow we have lost mempool events. We have to re-start again.
-        log.error(
-                "We have lost a ZMQMessage, mempoolSequence not expected: {}, "
-                        + "asking for new full mempool and mempoolSequence...",
-                event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event)));
-        fullReset();
-    }
-
     private boolean errorInZMQSequence(MempoolSeqEvent event) {
         return ((++lastZMQSequence) != event.getZmqSequence());
-    }
-
-    private boolean errorInMempoolSequence(MempoolSeqEvent event) {
-        // if the last Event was a block, then there is a (expected) big gap in mempool
-        // sequence. Do not check for gaps.
-        if (isLastEventaBlock)
-            return false;
-
-        int currentMPS = txPoolContainer.getTxPool().getMempoolSequence();
-        return ((currentMPS + 1) < event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event)));
     }
 
     private Supplier<IllegalArgumentException> onNoSeqNumberExceptionSupplier(MempoolSeqEvent event) {
