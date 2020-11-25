@@ -11,7 +11,7 @@ public interface TxPoolContainer {
 	 * @return
 	 * @throws TxPoolException
 	 */
-	public void setTxPool(TxPool txPool) throws TxPoolException;
+	public void setTxPool(TxPool txPool);
 
 	/**
 	 * gets the txpool contained in the Container.

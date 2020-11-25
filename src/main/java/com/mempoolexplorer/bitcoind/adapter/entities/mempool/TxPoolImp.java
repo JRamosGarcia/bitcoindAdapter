@@ -45,6 +45,11 @@ public class TxPoolImp implements TxPool {
 	}
 
 	@Override
+	public void apply(int mempoolSequence) {
+		this.mempoolSequence = mempoolSequence;
+	}
+
+	@Override
 	public Set<String> getTxIdSet() {
 		return txIdToTxMap.keySet();
 	}
@@ -96,5 +101,6 @@ public class TxPoolImp implements TxPool {
 	public int getMempoolSequence() {
 		return mempoolSequence;
 	}
+
 
 }

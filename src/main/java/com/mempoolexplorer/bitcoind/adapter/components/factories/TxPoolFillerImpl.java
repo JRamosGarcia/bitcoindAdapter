@@ -1,9 +1,15 @@
 package com.mempoolexplorer.bitcoind.adapter.components.factories;
 
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolEntry;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolInfo;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
@@ -11,10 +17,16 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemP
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionInput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.RawMemPoolEntryData;
+import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.utils.TransactionFactory;
+import com.mempoolexplorer.bitcoind.adapter.components.factories.utils.TxAncestryChangesFactory;
+import com.mempoolexplorer.bitcoind.adapter.entities.Fees;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
+import com.mempoolexplorer.bitcoind.adapter.entities.TxAncestry;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxInput;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxOutput;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
@@ -38,13 +50,24 @@ import lombok.extern.slf4j.Slf4j;
 public class TxPoolFillerImpl implements TxPoolFiller {
 
     @Autowired
-    BitcoindClient bitcoindClient;
+    private BitcoindClient bitcoindClient;
+
+    @Autowired
+    private TxPoolContainer txPoolContainer;
+
+    @Autowired
+    private AlarmLogger alarmLogger;
 
     @Override
     @ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
     public TxPool createMemPool() throws TxPoolException {
         try {
             GetMemPoolInfo memPoolInfo = bitcoindClient.getMemPoolInfo();
+            if (null != memPoolInfo.getError()) {
+                // We can't recover from this error.
+                throw new TxPoolException("Error, rawMemPoolNonVerbose returned error: " + memPoolInfo.getError()
+                        + ", requestId: " + memPoolInfo.getId());
+            }
             log.info("Bitcoind node has {} tx in his mempoool, loading...",
                     memPoolInfo.getGetMemPoolInfoData().getSize());
             GetRawMemPoolNonVerbose rawMemPoolNonVerbose = bitcoindClient.getRawMemPoolNonVerbose();
@@ -86,18 +109,12 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         int count = 0;// for PercentLog
 
         for (String txId : txIdList) {
-            GetMemPoolEntry mempoolEntry = bitcoindClient.getMempoolEntry(txId);
-            GetVerboseRawTransactionResult rawTx = bitcoindClient.getVerboseRawTransaction(txId);
-            if (mempoolEntry.getError() == null && rawTx.getError() == null) {
-                Transaction tx = TransactionFactory.from(txId, mempoolEntry.getRawMemPoolEntryData());
-                // addAdditionalData does more rpc, add error if any.
-                if (!addAdditionalData(tx, rawTx)) {
-                    txIdsWithError.add(txId);
-                } else {
-                    map.put(txId, tx);
-                }
-            } else {
+
+            Transaction tx = loadTransaction(txId);
+            if (null == tx) {
                 txIdsWithError.add(txId);
+            } else {
+                map.put(txId, tx);
             }
             pl.update(count++, percent -> log.info("Querying data for txs... {}", percent));
         }
@@ -106,6 +123,22 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             log.info("Transactions not found in mempool by rpc race conditions: {}", txIdsWithError);
         }
         return map;
+    }
+
+    private Transaction loadTransaction(String txId) {
+        GetMemPoolEntry mempoolEntry = bitcoindClient.getMempoolEntry(txId);
+        GetVerboseRawTransactionResult rawTx = bitcoindClient.getVerboseRawTransaction(txId);
+        if (mempoolEntry.getError() == null && rawTx.getError() == null) {
+            Transaction tx = TransactionFactory.from(txId, mempoolEntry.getRawMemPoolEntryData());
+            // addAdditionalData does more rpc, add error if any.
+            if (!addAdditionalData(tx, rawTx)) {
+                return null;
+            } else {
+                return tx;
+            }
+        } else {
+            return null;
+        }
     }
 
     private boolean addAdditionalData(Transaction tx, GetVerboseRawTransactionResult rawTx) {
@@ -187,9 +220,214 @@ public class TxPoolFillerImpl implements TxPoolFiller {
     }
 
     @Override
-    public TxPoolChanges obtainMemPoolChanges(MempoolSeqEvent event) {
-        // TODO: Continue here!!!!!!!!!!!
-        return new TxPoolChanges();
+    public Optional<TxPoolChanges> obtainMemPoolChanges(MempoolSeqEvent event) {
+        switch (event.getEvent()) {
+            case TXADD:
+                return onTxAdd(event.getHash());
+            case TXDEL:
+                return onTxDel(event.getHash());
+            case BLOCKCON:
+                return onBlockConnection(event.getHash());
+            case BLOCKDIS:
+                return onBlockDisconnection(event.getHash());
+            default:
+                throw new IllegalArgumentException("MempoolSeqEvent invalid");
+        }
+    }
+
+    private Optional<TxPoolChanges> onTxAdd(String txIdAdd) {
+        TxPoolChanges txpc = new TxPoolChanges();
+        Transaction txAdd = loadTransaction(txIdAdd);
+        // If tx is not in bitcoind, then we are far behind. just ignore it
+        if (null == txAdd) {
+            return Optional.empty();
+        }
+        txpc.getNewTxs().add(txAdd);
+        // obtain transaction DAG (see below). This is the set of tx that we must update
+        // its ancestry.
+        Set<String> txDAG = getTransactionDAG(txAdd);
+        addPoolChangesFromAncestry(txpc, txDAG);
+        return Optional.of(txpc);
+    }
+
+    private Optional<TxPoolChanges> onTxDel(String txIdDel) {
+        TxPoolChanges txpc = new TxPoolChanges();
+        Transaction txDel = txPoolContainer.getTxPool().getTx(txIdDel);
+        if (txDel == null) {
+            return Optional.empty();// Already deleted, I think it's not possible, but I don't care
+        }
+        txpc.getRemovedTxsId().add(txIdDel);
+        // obtain transaction DAG (see below). This is the set of tx that we must update
+        // its ancestry.
+        Set<String> txDAG = getTransactionDAG(txDel);
+        addPoolChangesFromAncestry(txpc, txDAG);
+        return Optional.of(txpc);
+    }
+
+    private Optional<TxPoolChanges> onBlockConnection(String blockHash) {
+        TxPoolChanges txpc = new TxPoolChanges();
+        GetBlockResult blockResult = bitcoindClient.getBlock(blockHash);
+        if (null != blockResult.getError()) {
+            alarmLogger.addAlarm("Bitcoind Cannot find block: " + blockHash);
+            log.error("Bitcoind can't find block: {}", blockHash);
+            return Optional.empty();
+        }
+
+        Set<String> blockDAGsSet = new HashSet<>();
+        List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
+        // Obtain all tx that changes its ancestry
+        fillBlockDAGsSet(blockTxsList, blockDAGsSet);
+        // add pool changes from tx mined (remove)
+        txpc.getRemovedTxsId().addAll(blockTxsList);
+        // add pool changes from ancestry changes
+        addPoolChangesFromAncestry(txpc, blockDAGsSet);
+        return Optional.of(txpc);
+    }
+
+    private Optional<TxPoolChanges> onBlockDisconnection(String blockHash) {
+        // Fist of all this is not a very frequent case, we send an alarm to see what
+        // happened
+        alarmLogger.addAlarm("BLOCK DISCONNECTION WITH HASH: " + blockHash);
+        TxPoolChanges txpc = new TxPoolChanges();
+        GetBlockResult blockResult = bitcoindClient.getBlock(blockHash);
+        if (null != blockResult.getError()) {
+            alarmLogger.addAlarm("Bitcoind Cannot find block: " + blockHash);
+            log.error("Bitcoind can't find block: {}", blockHash);
+            return Optional.empty();
+        }
+
+        Set<String> blockDAGsSet = new HashSet<>();
+        List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
+        // Obtain all tx that changes its ancestry
+        fillBlockDAGsSet(blockTxsList, blockDAGsSet);
+        // Add pool changes from tx "un-mined" (add)
+        addPoolChangesFromNewTxs(txpc, blockTxsList);
+        // add pool changes from ancestry changes
+        addPoolChangesFromAncestry(txpc, blockDAGsSet);
+        return Optional.of(txpc);
+    }
+
+    private void addPoolChangesFromNewTxs(TxPoolChanges txpc, List<String> blockTxsList) {
+        for (String txIdInBlock : blockTxsList) {
+            Transaction txInBlock = loadTransaction(txIdInBlock);
+            if (txIdInBlock == null) {
+                log.error("TxId {} in disconnected block, not found", txIdInBlock);
+                continue;
+            }
+            txpc.getNewTxs().add(txInBlock);
+        }
+    }
+
+    /**
+     * Returns all the transactions IN OUR MEMPOOL connected as parents or childrens
+     * to the Transaction recursively. That is, the complete DAG (Direct Acyclic
+     * Graph) on which the transaction is into. If tx has no dependencies or
+     * dependants the returned DAG is empty.
+     */
+    private Set<String> getTransactionDAG(Transaction seedTx) {
+
+        Set<String> dagSet = new HashSet<>();// The resulting DAG
+        Deque<String> txIdStack = new LinkedList<>();// Stack containing txIds to visit
+        TxPool txPool = txPoolContainer.getTxPool();
+
+        // Adds initial txs connections.
+        txIdStack.addAll(seedTx.getTxAncestry().getDepends());
+        txIdStack.addAll(seedTx.getTxAncestry().getSpentby());
+
+        while (!txIdStack.isEmpty()) {
+            String txId = txIdStack.pop();
+            Transaction tx = txPool.getTx(txId);
+            if (tx == null) {
+                // This can happen when our mempool is far behind bitcoind's.
+                // Continue with no problem, the missing tx will be called eventually.
+                continue;
+            }
+            if (dagSet.add(tx.getTxId())) {
+                List<String> depends = tx.getTxAncestry().getDepends();
+                List<String> spentBy = tx.getTxAncestry().getSpentby();
+                depends.stream().filter(parent -> !dagSet.contains(parent)).forEach(txIdStack::add);
+                spentBy.stream().filter(child -> !dagSet.contains(child)).forEach(txIdStack::add);
+            }
+        }
+        return dagSet;
+    }
+
+    /**
+     * Fills blockDAGsSet with all the transactions IN OUR MEMPOOL connected as
+     * parents or childrens to all transactions in a block (recursively). That is,
+     * the sets of complete DAGs (Direct Acyclic Graph) on which all block
+     * transactions are into. If all txs has no dependencies or dependants the
+     * returned DAG is empty (maybe on empty blocks).
+     * 
+     * This method it's equivalent of invoking getTransactionDAG for each tx in a
+     * block and then store all tx in a superset, we make a new method with other
+     * signature for eficiency
+     */
+    private void fillBlockDAGsSet(List<String> txsList, Set<String> blockDAGsSet) {
+        Deque<String> txIdStack = new LinkedList<>();// Stack containing txIds to visit
+        TxPool txPool = txPoolContainer.getTxPool();
+
+        for (String txIdInBlock : txsList) {
+
+            Transaction txInBlock = txPool.getTx(txIdInBlock);
+
+            // Adds initial txs connections.
+            txIdStack.addAll(txInBlock.getTxAncestry().getDepends());
+            txIdStack.addAll(txInBlock.getTxAncestry().getSpentby());
+
+            while (!txIdStack.isEmpty()) {
+                String txId = txIdStack.pop();
+                Transaction tx = txPool.getTx(txId);
+                if (tx == null) {
+                    // This can happen when our mempool is far behind bitcoind's.
+                    // Continue with no problem, the missing tx will be called eventually.
+                    continue;
+                }
+                if (blockDAGsSet.add(tx.getTxId())) {
+                    List<String> depends = tx.getTxAncestry().getDepends();
+                    List<String> spentBy = tx.getTxAncestry().getSpentby();
+                    depends.stream().filter(parent -> !blockDAGsSet.contains(parent)).forEach(txIdStack::add);
+                    spentBy.stream().filter(child -> !blockDAGsSet.contains(child)).forEach(txIdStack::add);
+                }
+            }
+        }
+    }
+
+    /**
+     * Given a set of txIds (txDAG) query for ancestry changes in bitcoind, if
+     * any,add it to txpc
+     * 
+     * @param txpc
+     * @param txDAG
+     */
+    private void addPoolChangesFromAncestry(TxPoolChanges txpc, Set<String> txDAG) {
+        for (String txId : txDAG) {
+            Transaction tx = txPoolContainer.getTxPool().getTx(txId);
+            if (null == tx) {
+                continue;// I think it's not possible, but I don't care
+            }
+            GetMemPoolEntry mempoolEntry = bitcoindClient.getMempoolEntry(txId);
+            if (mempoolEntry.getError() != null) {
+                continue;// As above, ignore if not in bitcoind's mempool
+            }
+            RawMemPoolEntryData rawMemPoolEntryData = mempoolEntry.getRawMemPoolEntryData();
+            if (ancestryHasChanged(tx, rawMemPoolEntryData)) {
+                txpc.getTxAncestryChangesMap().put(txId, TxAncestryChangesFactory.from(rawMemPoolEntryData));
+            }
+        }
+    }
+
+    private boolean ancestryHasChanged(Transaction tx, RawMemPoolEntryData rawMemPoolEntryData) {
+        TxAncestry txa = tx.getTxAncestry();
+        Fees txf = tx.getFees();
+        return (!txa.getDescendantCount().equals(rawMemPoolEntryData.getDescendantcount()))
+                || (!txa.getDescendantSize().equals(rawMemPoolEntryData.getDescendantsize()))
+                || (!txa.getAncestorCount().equals(rawMemPoolEntryData.getAncestorcount()))
+                || (!txa.getAncestorSize().equals(rawMemPoolEntryData.getAncestorsize()))
+                || (!txa.getDepends().equals(rawMemPoolEntryData.getDepends()))
+                || (!txa.getSpentby().equals(rawMemPoolEntryData.getSpentby()))
+                || (!txf.getAncestor().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getAncestor())))
+                || (!txf.getDescendant().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getDescendant())));
     }
 
 }

@@ -1,5 +1,6 @@
 package com.mempoolexplorer.bitcoind.adapter.threads;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
@@ -119,15 +120,17 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         if (discardEventAndLogIt(event)) {
             return;
         }
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
+        Optional<TxPoolChanges> txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
         int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
-        txPoolContainer.getTxPool().apply(txPoolChanges, eventMPS);
+        TxPool txPool = txPoolContainer.getTxPool();
+        txPoolChanges.ifPresentOrElse(txPC -> txPool.apply(txPC, eventMPS), () -> txPool.apply(eventMPS));
     }
 
     private void onBlock(MempoolSeqEvent event) {
         // No mempoolSequence for block events
-        TxPoolChanges txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
-        txPoolContainer.getTxPool().apply(txPoolChanges);
+        Optional<TxPoolChanges> txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
+        TxPool txPool = txPoolContainer.getTxPool();
+        txPoolChanges.ifPresent(txPool::apply);
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {

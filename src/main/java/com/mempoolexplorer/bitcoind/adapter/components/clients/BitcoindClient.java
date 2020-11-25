@@ -25,4 +25,7 @@ public interface BitcoindClient {
 	Integer getBlockCount(); 
 	
 	GetBlockResult getBlock(Integer blockHeight);
+
+	GetBlockResult getBlock(String blockHash);
+
 }

@@ -3,10 +3,6 @@ package com.mempoolexplorer.bitcoind.adapter.components.clients;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.BooleanArrayParamRequest;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.GetBlockTemplateRulesParams;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.requests.ObjectArrayParamRequest;
@@ -20,6 +16,10 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPool
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolNonVerbose;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemPoolVerbose;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResult;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 @Component
 public class BitcoindClientImpl implements BitcoindClient {
@@ -125,6 +125,18 @@ public class BitcoindClientImpl implements BitcoindClient {
 	}
 
 	@Override
+	public GetBlockResult getBlock(String blockHash) {
+		ObjectArrayParamRequest objectParams = new ObjectArrayParamRequest();
+		objectParams.setId("9");
+		objectParams.setMethod("getblock");
+		List<Object> params = new ArrayList<>();
+		params.add(blockHash);
+		params.add(1);// Verbosity level
+		objectParams.setParams(params);
+		return restTemplate.postForObject("/", objectParams, GetBlockResult.class);
+	}
+
+	@Override
 	public GetMemPoolEntry getMempoolEntry(String txId) {
 		ObjectArrayParamRequest objectParams = new ObjectArrayParamRequest();
 
@@ -136,4 +148,5 @@ public class BitcoindClientImpl implements BitcoindClient {
 
 		return restTemplate.postForObject("/", objectParams, GetMemPoolEntry.class);
 	}
+
 }

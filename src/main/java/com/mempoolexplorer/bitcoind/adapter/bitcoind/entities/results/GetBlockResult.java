@@ -7,12 +7,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-
 @Getter
 @Setter
 @ToString
 @NoArgsConstructor
-public class GetBlockResult {
+public class GetBlockResult extends BitcoindResult {
 
 	@JsonProperty("result")
 	private GetBlockResultData getBlockResultData;

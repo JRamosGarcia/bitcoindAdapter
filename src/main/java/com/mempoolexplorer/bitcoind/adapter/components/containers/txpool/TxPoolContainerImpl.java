@@ -37,7 +37,7 @@ public class TxPoolContainerImpl implements TxPoolContainer {
 	}
 
 	@Override
-	public void setTxPool(TxPool txPool) throws TxPoolException {
+	public void setTxPool(TxPool txPool){
 		this.txPool=txPool;
 	}
 
