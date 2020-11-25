@@ -44,6 +44,11 @@ public class MemPoolController {
 		return memPoolContainer.getTxPool().getTxIdSet();
 	}
 
+	@GetMapping("/size")
+	public Integer getMemPoolSize() {
+		return memPoolContainer.getTxPool().getSize();
+	}
+
 	@ExceptionHandler(TransactionNotFoundInMemPoolException.class)
 	public ResponseEntity<ErrorDetails> onTransactionNotFound(TransactionNotFoundInMemPoolException e) {
 		ErrorDetails errorDetails = new ErrorDetails();

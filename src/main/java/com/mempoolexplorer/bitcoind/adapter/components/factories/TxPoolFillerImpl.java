@@ -1,13 +1,17 @@
 package com.mempoolexplorer.bitcoind.adapter.components.factories;
 
-import java.util.ArrayList;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolEntry;
@@ -58,6 +62,11 @@ public class TxPoolFillerImpl implements TxPoolFiller {
     @Autowired
     private AlarmLogger alarmLogger;
 
+    @Autowired
+    private Clock clock;
+
+    private AtomicInteger changeCounter = new AtomicInteger(0);
+
     @Override
     @ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
     public TxPool createMemPool() throws TxPoolException {
@@ -102,22 +111,22 @@ public class TxPoolFillerImpl implements TxPoolFiller {
 
         // If a mempool transaction is dumped beetween bitcoind RPC calls, the
         // transaction is listed here, also it is not added to the ConcurrentHashMap
-        List<String> txIdsWithError = new ArrayList<>();
+        Queue<String> txIdsWithError = new ConcurrentLinkedQueue<>();
 
         // Utility for logging % completed. 1% granularity.
         PercentLog pl = new PercentLog(txIdList.size(), 1);
-        int count = 0;// for PercentLog
+        // int count = 0;// for PercentLog
+        AtomicInteger count = new AtomicInteger(0);
 
-        for (String txId : txIdList) {
-
+        txIdList.stream().parallel().forEach(txId -> {
             Transaction tx = loadTransaction(txId);
             if (null == tx) {
                 txIdsWithError.add(txId);
             } else {
                 map.put(txId, tx);
             }
-            pl.update(count++, percent -> log.info("Querying data for txs... {}", percent));
-        }
+            pl.update(count.incrementAndGet(), percent -> log.info("Querying data for txs... {}", percent));
+        });
 
         if (!txIdsWithError.isEmpty()) {
             log.info("Transactions not found in mempool by rpc race conditions: {}", txIdsWithError);
@@ -242,6 +251,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         if (null == txAdd) {
             return Optional.empty();
         }
+        txpc.setChangeTime(Instant.now(clock));
+        // Increment only when we don't return an empty optional
+        txpc.setChangeCounter(changeCounter.addAndGet(1));
         txpc.getNewTxs().add(txAdd);
         // obtain transaction DAG (see below). This is the set of tx that we must update
         // its ancestry.
@@ -256,6 +268,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         if (txDel == null) {
             return Optional.empty();// Already deleted, I think it's not possible, but I don't care
         }
+        txpc.setChangeTime(Instant.now(clock));
+        // Increment only when we don't return an empty optional
+        txpc.setChangeCounter(changeCounter.addAndGet(1));
         txpc.getRemovedTxsId().add(txIdDel);
         // obtain transaction DAG (see below). This is the set of tx that we must update
         // its ancestry.
@@ -272,7 +287,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             log.error("Bitcoind can't find block: {}", blockHash);
             return Optional.empty();
         }
-
+        txpc.setChangeTime(Instant.now(clock));
+        // Increment only when we don't return an empty optional
+        txpc.setChangeCounter(changeCounter.addAndGet(1));
         Set<String> blockDAGsSet = new HashSet<>();
         List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
         // Obtain all tx that changes its ancestry
@@ -296,6 +313,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             return Optional.empty();
         }
 
+        txpc.setChangeTime(Instant.now(clock));
+        // Increment only when we don't return an empty optional
+        txpc.setChangeCounter(changeCounter.addAndGet(1));
         Set<String> blockDAGsSet = new HashSet<>();
         List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
         // Obtain all tx that changes its ancestry
@@ -370,6 +390,10 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         for (String txIdInBlock : txsList) {
 
             Transaction txInBlock = txPool.getTx(txIdInBlock);
+            if (txInBlock == null) {
+                // This (mined/unmined) tx is not in our mempool
+                continue;
+            }
 
             // Adds initial txs connections.
             txIdStack.addAll(txInBlock.getTxAncestry().getDepends());

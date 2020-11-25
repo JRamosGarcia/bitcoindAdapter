@@ -2,6 +2,11 @@ package com.mempoolexplorer.bitcoind.adapter.threads;
 
 import java.util.concurrent.BlockingQueue;
 
+import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -17,6 +22,9 @@ public abstract class ZMQSequenceEventProcessor implements Runnable {
     protected boolean endThread;
 
     protected BlockingQueue<MempoolSeqEvent> blockingQueue;
+
+    @Autowired
+    protected AlarmLogger alarmLogger;
 
     protected abstract void doYourThing() throws InterruptedException;
 
@@ -45,6 +53,7 @@ public abstract class ZMQSequenceEventProcessor implements Runnable {
             doYourThing();
         } catch (RuntimeException e) {
             log.error("", e);
+            alarmLogger.addAlarm("Fatal error" + ExceptionUtils.getStackTrace(e));
         } catch (InterruptedException e) {
             log.info("Thread interrupted for shutdown.");
             log.debug("", e);

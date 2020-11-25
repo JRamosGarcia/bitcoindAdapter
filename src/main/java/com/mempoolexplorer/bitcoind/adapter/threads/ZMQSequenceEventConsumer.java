@@ -3,7 +3,6 @@ package com.mempoolexplorer.bitcoind.adapter.threads;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
@@ -47,9 +46,6 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     @Autowired
     private TxPoolFiller txPoolFiller;
-
-    @Autowired
-    private AlarmLogger alarmLogger;
 
     private boolean isStarting = true;
     private int lastZMQSequence = -1;
@@ -124,6 +120,10 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
         TxPool txPool = txPoolContainer.getTxPool();
         txPoolChanges.ifPresentOrElse(txPC -> txPool.apply(txPC, eventMPS), () -> txPool.apply(eventMPS));
+        txPoolChanges.ifPresent(txPC -> {
+            if (log.isDebugEnabled() && !txPC.getTxAncestryChangesMap().isEmpty())
+                log.debug(txPC.getTxAncestryChangesMap().toString());
+        });
     }
 
     private void onBlock(MempoolSeqEvent event) {
@@ -131,6 +131,10 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         Optional<TxPoolChanges> txPoolChanges = txPoolFiller.obtainMemPoolChanges(event);
         TxPool txPool = txPoolContainer.getTxPool();
         txPoolChanges.ifPresent(txPool::apply);
+        txPoolChanges.ifPresent(txPC -> {
+            if (log.isDebugEnabled() && !txPC.getTxAncestryChangesMap().isEmpty())
+                log.debug(txPC.getTxAncestryChangesMap().toString());
+        });
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {
