@@ -150,6 +150,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private void fullReset() throws TxPoolException {
         resetContainers();
+        // Reset downstream counter to 0 to provoke cascade resets.
+        txPoolFiller.resetChangeCounter();
         isStarting = true;
         lastZMQSequence = -1;
     }

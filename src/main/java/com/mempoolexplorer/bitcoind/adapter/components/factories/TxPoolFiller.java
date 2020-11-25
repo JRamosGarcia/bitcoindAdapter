@@ -25,4 +25,10 @@ public interface TxPoolFiller {
      * @return
      */
     Optional<TxPoolChanges> obtainMemPoolChanges(MempoolSeqEvent event);
+
+    /**
+     * Resets TxPoolChanges incremental counter to 0. This provokes that services
+     * depending on bitcoindAdapter through kafka will reset it's mempool also.
+     */
+    void resetChangeCounter();
 }

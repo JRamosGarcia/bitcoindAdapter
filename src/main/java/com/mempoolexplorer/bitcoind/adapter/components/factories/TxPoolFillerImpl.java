@@ -454,4 +454,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
                 || (!txf.getDescendant().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getDescendant())));
     }
 
+    @Override
+    public void resetChangeCounter() {
+        this.changeCounter.set(0);
+    }
+
 }
