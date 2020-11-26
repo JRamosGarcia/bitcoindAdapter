@@ -105,7 +105,18 @@ public class AppLifeCycle {
         log.info("Shuttingdown bitcoindAdapter...");
         zmqSequenceEventConsumer.shutdown();
         zmqSequenceEventReceiver.shutdown();
+        schedulerShutdown();
         log.info("BitcoindAdapter shutdown complete.");
+    }
+
+    private void schedulerShutdown() {
+        log.info("Shuting down bitcoindAdapter scheduler...");
+        try {
+            scheduler.shutdown();
+        } catch (SchedulerException e) {
+            log.error("Error shutting down scheduller, exception: ", e);
+        }
+        log.info("BitcoindAdapter scheduler shutdown complete.");
     }
 
     public void checkInitialization() throws SchedulerException, TxPoolException {
@@ -126,7 +137,7 @@ public class AppLifeCycle {
         zmqSequenceEventReceiver.start();
         log.info("BitcoinAdapter ZMQ receiver and consumer started.");
         startBlockTemplateRefresherJob();
-        log.info("BlockTemplateRefresherJob started.");        
+        log.info("BlockTemplateRefresherJob started.");
     }
 
     // In case of SchedulerException we cannot recover so we don't get it
