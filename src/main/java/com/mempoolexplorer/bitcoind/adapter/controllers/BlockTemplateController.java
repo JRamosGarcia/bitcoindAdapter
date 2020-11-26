@@ -17,7 +17,7 @@ public class BlockTemplateController {
 
 	@GetMapping("/blockTemplate")
 	public BlockTemplate getBlockTemplate() {
-		return blockTemplateContainer.getBlockTemplate();
+		return blockTemplateContainer.getNewestBlockTemplate();
 	}
 
 }

@@ -3,12 +3,24 @@ package com.mempoolexplorer.bitcoind.adapter;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
+import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
+import com.mempoolexplorer.bitcoind.adapter.jobs.BlockTemplateRefresherJob;
+import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.threads.MempoolSeqEvent;
 import com.mempoolexplorer.bitcoind.adapter.threads.ZMQSequenceEventConsumer;
 import com.mempoolexplorer.bitcoind.adapter.threads.ZMQSequenceEventReceiver;
 
+import org.quartz.JobBuilder;
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.SimpleScheduleBuilder;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -50,6 +62,21 @@ public class AppLifeCycle {
     @Autowired
     private ZMQSequenceEventConsumer zmqSequenceEventConsumer;
 
+    @Autowired
+    private Scheduler scheduler;
+
+    @Autowired
+    private BitcoindAdapterProperties bitcoindAdapterProperties;
+
+    @Autowired
+    private BitcoindClient bitcoindClient;
+
+    @Autowired
+    private BlockTemplateContainer blockTemplateContainer;
+
+    @Autowired
+    private AlarmLogger alarmLogger;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReadyEvent(ApplicationReadyEvent event) throws SchedulerException, TxPoolException {
         onApplicationReadyEvent = true;
@@ -88,7 +115,7 @@ public class AppLifeCycle {
         }
     }
 
-    private void initialization() {
+    private void initialization() throws SchedulerException {
         log.info("bitcoinAdapter ZMQ receiver and consumer are starting...");
         // We keep the blockingQueue private among producer and consumer.
         // No size limit. Should be enough fast to not get "full"
@@ -97,7 +124,31 @@ public class AppLifeCycle {
         zmqSequenceEventReceiver.setBlockingQueue(blockingQueue);
         zmqSequenceEventConsumer.start();
         zmqSequenceEventReceiver.start();
-        log.info("bitcoinAdapter ZMQ receiver and consumer started.");
+        log.info("BitcoinAdapter ZMQ receiver and consumer started.");
+        startBlockTemplateRefresherJob();
+        log.info("BlockTemplateRefresherJob started.");        
+    }
+
+    // In case of SchedulerException we cannot recover so we don't get it
+    private void startBlockTemplateRefresherJob() throws SchedulerException {
+        // We are screwing in DB-jobs because Quartz Jobs serialize JobDataMap. But we
+        // are not using that feature.
+        JobDataMap jobDataMap = new JobDataMap();
+        jobDataMap.put("bitcoindClient", bitcoindClient);
+        jobDataMap.put("blockTemplateContainer", blockTemplateContainer);
+        jobDataMap.put("alarmLogger", alarmLogger);
+
+        JobDetail job = JobBuilder.newJob(BlockTemplateRefresherJob.class)
+                .withIdentity("blockTemplateRefresherJob", "blockTemplate").setJobData(jobDataMap).build();
+        Trigger trigger = TriggerBuilder.newTrigger().withIdentity("blockTemplateRefreshTrigger", "blockTemplate")
+                .startNow()
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInSeconds(bitcoindAdapterProperties.getRefreshIntervalSec())
+                        .withMisfireHandlingInstructionNowWithRemainingCount().repeatForever())
+                .build();
+
+        scheduler.scheduleJob(job, trigger);
+        scheduler.start();
     }
 
 }

@@ -187,9 +187,9 @@ public class MemPoolRefresherJob implements Job {
 
 	private BlockTemplateChanges calculateBlockTemplateChanges(GetBlockTemplateResultData getBlockTemplateResultData) {
 		BlockTemplate newBT = new BlockTemplate(getBlockTemplateResultData);
-		BlockTemplate oldBT = blockTemplateContainer.getBlockTemplate();
+		BlockTemplate oldBT = blockTemplateContainer.getNewestBlockTemplate();
 		BlockTemplateChanges blockTemplateChanges = new BlockTemplateChanges(newBT, oldBT);
-		blockTemplateContainer.setBlockTemplate(newBT);
+		blockTemplateContainer.setNewestBlockTemplate(newBT);
 		logger.info("new BlockTemplate(size: {} new: {} remove: {})", newBT.getBlockTemplateTxMap().size(),
 				blockTemplateChanges.getAddBTTxsList().size(), blockTemplateChanges.getRemoveBTTxIdsList().size());
 		return blockTemplateChanges;
