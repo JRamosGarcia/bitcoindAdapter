@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetBlockResult;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetMemPoolEntry;
@@ -21,6 +22,7 @@ import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetRawMemP
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionInput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionOutput;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResult;
+import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.GetVerboseRawTransactionResultData;
 import com.mempoolexplorer.bitcoind.adapter.bitcoind.entities.results.RawMemPoolEntryData;
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
@@ -33,6 +35,9 @@ import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxAncestry;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxInput;
 import com.mempoolexplorer.bitcoind.adapter.entities.TxOutput;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.CoinBaseTx;
+import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.NotInMemPoolTx;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolImp;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
@@ -43,6 +48,7 @@ import com.mempoolexplorer.bitcoind.adapter.utils.JSONUtils;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -64,6 +70,9 @@ public class TxPoolFillerImpl implements TxPoolFiller {
 
     @Autowired
     private Clock clock;
+
+    @Autowired
+    private BlockFactory blockFactory;
 
     private AtomicInteger changeCounter = new AtomicInteger(0);
 
@@ -118,6 +127,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         // int count = 0;// for PercentLog
         AtomicInteger count = new AtomicInteger(0);
 
+        // Parallel streams works nicely in this context.
         txIdList.stream().parallel().forEach(txId -> {
             Transaction tx = loadTransaction(txId);
             if (null == tx) {
@@ -229,16 +239,28 @@ public class TxPoolFillerImpl implements TxPoolFiller {
     }
 
     @Override
-    public Optional<TxPoolChanges> obtainMemPoolChanges(MempoolSeqEvent event) {
+    public Optional<TxPoolChanges> obtainOnTxMemPoolChanges(MempoolSeqEvent event) {
         switch (event.getEvent()) {
             case TXADD:
                 return onTxAdd(event.getHash());
             case TXDEL:
                 return onTxDel(event.getHash());
             case BLOCKCON:
+            case BLOCKDIS:
+            default:
+                throw new IllegalArgumentException("MempoolSeqEvent invalid");
+        }
+    }
+
+    @Override
+    public Optional<Pair<TxPoolChanges, Block>> obtainOnBlockMemPoolChanges(MempoolSeqEvent event) {
+        switch (event.getEvent()) {
+            case BLOCKCON:
                 return onBlockConnection(event.getHash());
             case BLOCKDIS:
                 return onBlockDisconnection(event.getHash());
+            case TXADD:
+            case TXDEL:
             default:
                 throw new IllegalArgumentException("MempoolSeqEvent invalid");
         }
@@ -279,7 +301,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         return Optional.of(txpc);
     }
 
-    private Optional<TxPoolChanges> onBlockConnection(String blockHash) {
+    private Optional<Pair<TxPoolChanges, Block>> onBlockConnection(String blockHash) {
         TxPoolChanges txpc = new TxPoolChanges();
         GetBlockResult blockResult = bitcoindClient.getBlock(blockHash);
         if (null != blockResult.getError()) {
@@ -294,14 +316,17 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
         // Obtain all tx that changes its ancestry
         fillBlockDAGsSet(blockTxsList, blockDAGsSet);
-        // add pool changes from tx mined (remove)
+        // Add pool changes from tx mined (remove)
         txpc.getRemovedTxsId().addAll(blockTxsList);
-        // add pool changes from ancestry changes
+        // Add pool changes from ancestry changes
         addPoolChangesFromAncestry(txpc, blockDAGsSet);
-        return Optional.of(txpc);
+        // Create block from bitcoind result (and timestamp associated)
+        Block block = blockFactory.from(blockResult.getGetBlockResultData(), Block.CONNECTED_BLOCK);
+        addNotInMemPoolTxsOf(block);
+        return Optional.of(Pair.of(txpc, block));
     }
 
-    private Optional<TxPoolChanges> onBlockDisconnection(String blockHash) {
+    private Optional<Pair<TxPoolChanges, Block>> onBlockDisconnection(String blockHash) {
         // Fist of all this is not a very frequent case, we send an alarm to see what
         // happened
         alarmLogger.addAlarm("BLOCK DISCONNECTION WITH HASH: " + blockHash);
@@ -312,7 +337,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             log.error("Bitcoind can't find block: {}", blockHash);
             return Optional.empty();
         }
-
         txpc.setChangeTime(Instant.now(clock));
         // Increment only when we don't return an empty optional
         txpc.setChangeCounter(changeCounter.addAndGet(1));
@@ -322,9 +346,60 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         fillBlockDAGsSet(blockTxsList, blockDAGsSet);
         // Add pool changes from tx "un-mined" (add)
         addPoolChangesFromNewTxs(txpc, blockTxsList);
-        // add pool changes from ancestry changes
+        // Add pool changes from ancestry changes
         addPoolChangesFromAncestry(txpc, blockDAGsSet);
-        return Optional.of(txpc);
+        // Create block from bitcoind result (and timestamp associated)
+        Block block = blockFactory.from(blockResult.getGetBlockResultData(), Block.DISCONNECTED_BLOCK);
+        addNotInMemPoolTxsOf(block);// Not sure if useful
+        return Optional.of(Pair.of(txpc, block));
+    }
+
+    // After finding a new block, it (normally) could be the case that we don't have
+    // all of the transactions. (i.e. coinbase or transactions not relayed to us).
+    // We need some of that transactions data for statistics
+    private void addNotInMemPoolTxsOf(Block block) {
+
+        // First we obtain the list of transactions in the block which are not in the
+        // memPool
+        List<String> notInMemPoolTxIds = block.getTxIds().stream()
+                .filter(txId -> null == txPoolContainer.getTxPool().getTx(txId)).collect(Collectors.toList());
+
+        // Then we construct NotInMemPoolTx or coinbase data and add it to the block
+        for (String txId : notInMemPoolTxIds) {
+            GetVerboseRawTransactionResultData txData = bitcoindClient.getVerboseRawTransaction(txId)
+                    .getGetRawTransactionResultData();
+            String coinbase = txData.getVin().get(0).getCoinbase();
+            if (null == coinbase || coinbase.isEmpty()) {// Not coinbase tx
+                Long inputsAmount = getInputsAmount(txData.getVin());
+                Long outputsAmount = getOutputsAmount(txData.getVout());
+                Long fee = inputsAmount - outputsAmount;
+                Integer weight = txData.getWeight();
+                // Sadly, It's a nigthmare get a fee with ancestors. yet...
+                block.getNotInMemPoolTransactions().put(txId, new NotInMemPoolTx(txId, fee, weight));
+            } else {// coinbase tx
+                CoinBaseTx coinBaseTx = new CoinBaseTx();
+                coinBaseTx.setTxId(txId);
+                coinBaseTx.setvInField(coinbase);
+                coinBaseTx.setWeight(txData.getWeight());
+                block.setCoinBaseTx(coinBaseTx);
+            }
+        }
+    }
+
+    // Gets the sum of values in satoshis of all txInputs, we have to ask for the
+    // txin.txId output and index
+    private Long getInputsAmount(List<GetVerboseRawTransactionInput> txin) {
+        return txin.stream().mapToLong(txIn -> {
+            String txId = txIn.getTxid();
+            Integer index = txIn.getVout();
+            GetVerboseRawTransactionResultData inputTxData = bitcoindClient.getVerboseRawTransaction(txId)
+                    .getGetRawTransactionResultData();
+            return JSONUtils.jsonToAmount(inputTxData.getVout().get(index).getValue());
+        }).sum();
+    }
+
+    private Long getOutputsAmount(List<GetVerboseRawTransactionOutput> vout) {
+        return vout.stream().mapToLong(txOut -> JSONUtils.jsonToAmount(txOut.getValue())).sum();
     }
 
     private void addPoolChangesFromNewTxs(TxPoolChanges txpc, List<String> blockTxsList) {

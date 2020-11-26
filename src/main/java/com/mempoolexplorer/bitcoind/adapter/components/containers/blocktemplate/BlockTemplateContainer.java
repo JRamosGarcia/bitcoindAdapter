@@ -1,6 +1,9 @@
 package com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate;
 
+import java.util.Optional;
+
 import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplate;
+import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplateChanges;
 
 /**
  * Stores newest and last-used BlockTemplate. Also tracks if there are changes
@@ -13,9 +16,9 @@ public interface BlockTemplateContainer {
 
 	void setNewestBlockTemplate(BlockTemplate blockTemplate);
 
-	BlockTemplate getLastUsedBlockTemplate();
-
-	void setNewAsLastUsed();
-
-	boolean areChanges();
+	/**
+	 * If optional is not empty, changes *MUST BE SENT*
+	 * @return
+	 */
+	Optional<BlockTemplateChanges> getChanges();
 }

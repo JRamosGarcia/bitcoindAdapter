@@ -16,8 +16,9 @@ public class BlockFactoryImpl implements BlockFactory {
 	private Clock clock;
 
 	@Override
-	public Block from(GetBlockResultData blockResultData) {
+	public Block from(GetBlockResultData blockResultData, boolean connected) {
 		Block block = new Block();
+		block.setConnected(connected);
 		block.setChangeTime(Instant.now(clock));
 		block.setHash(blockResultData.getHash());
 		block.setHeight(blockResultData.getHeight());
@@ -25,7 +26,7 @@ public class BlockFactoryImpl implements BlockFactory {
 		block.setMinedTime(Instant.ofEpochSecond(blockResultData.getTime()));
 		block.setMedianMinedTime(Instant.ofEpochSecond(blockResultData.getMediantime()));
 		block.setTxIds(blockResultData.getTx());
-		
+
 		return block;
 	}
 

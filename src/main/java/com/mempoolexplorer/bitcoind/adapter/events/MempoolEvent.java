@@ -15,7 +15,7 @@ public class MempoolEvent {
 	//
 	public enum EventType {
 		NEW_BLOCK, REFRESH_POOL
-	};
+	}
 
 	private EventType eventType;
 	private Block block;

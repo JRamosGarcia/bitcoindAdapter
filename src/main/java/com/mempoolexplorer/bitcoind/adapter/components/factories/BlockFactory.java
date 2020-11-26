@@ -5,6 +5,6 @@ import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 
 public interface BlockFactory {
 
-	Block from(GetBlockResultData blockResultData);
+	Block from(GetBlockResultData blockResultData, boolean connected);
 
 }

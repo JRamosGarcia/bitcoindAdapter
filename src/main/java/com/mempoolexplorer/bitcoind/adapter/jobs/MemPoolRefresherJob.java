@@ -90,7 +90,8 @@ public class MemPoolRefresherJob implements Job {
 			logger.info("New block with height: {} and hash: {}. Sending msg to msgQueue", state.getBlockNum(),
 					getBlockResult.getGetBlockResultData().getHash());
 
-			Block block = blockFactory.from(getBlockResult.getGetBlockResultData());
+			// TODO: Esto es basura antes de borrar.
+			Block block = blockFactory.from(getBlockResult.getGetBlockResultData(), Block.CONNECTED_BLOCK);
 			addNotInMemPoolTxsOf(block);
 			txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
 		}
@@ -215,7 +216,7 @@ public class MemPoolRefresherJob implements Job {
 			if (txpc.getNewTxs().size() == 10) {
 				txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
 				txpc.setNewTxs(new ArrayList<>(10));
-				pl.update(counter, (percent) -> logger.info("Sending full txMemPool: {}", percent));
+				pl.update(counter, percent -> logger.info("Sending full txMemPool: {}", percent));
 			}
 			txpc.getNewTxs().add(entry.getValue());
 			counter++;

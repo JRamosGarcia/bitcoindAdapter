@@ -4,13 +4,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.PostConstruct;
 
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
+import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolImp;
+import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPoolImp;
-import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
-import com.mempoolexplorer.bitcoind.adapter.metrics.ProfileMetricNames;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
