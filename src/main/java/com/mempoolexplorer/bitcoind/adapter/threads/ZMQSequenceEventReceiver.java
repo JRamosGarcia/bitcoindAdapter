@@ -108,7 +108,7 @@ public class ZMQSequenceEventReceiver extends ZMQSequenceEventProcessor {
                 }
                 MempoolSeqEvent event = new MempoolSeqEvent(hashStr, eventEnum, Optional.ofNullable(memPoolSequence),
                         zmqSequence);
-                blockingQueue.add(event);
+                blockingQueueContainer.getBlockingQueue().add(event);
             }
             log.info("Out of main loop ");
         } catch (ZMQException e) {

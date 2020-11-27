@@ -71,7 +71,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         try {
             while (!endThread) {
                 MempoolSeqEvent event = null;
-                event = blockingQueue.take();
+                event = blockingQueueContainer.getBlockingQueue().take();
                 log.debug("This is the event: {}", event);
                 onEvent(event);
             }

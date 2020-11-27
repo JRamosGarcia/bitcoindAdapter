@@ -33,9 +33,11 @@ public class BlockTemplateRefresherJob implements Job {
     public void execute(JobExecutionContext context) throws JobExecutionException {
         try {
             GetBlockTemplateResult blockTemplateResult = bitcoindClient.getBlockTemplateResult();
-            if (blockTemplateResult.getError() == null) {
-                alarmLogger.addAlarm("Can't get block template result. Maybe bitcoind is down?");
-                log.error("Can't get block template result. Maybe bitcoind is down?");
+            if (blockTemplateResult.getError() != null) {
+                alarmLogger.addAlarm("Can't get block template result. Maybe bitcoind is down? Error: "
+                        + blockTemplateResult.getError());
+                log.error("Can't get block template result. Maybe bitcoind is down? Error: {}",
+                        blockTemplateResult.getError());
                 return;
             }
             GetBlockTemplateResultData getBlockTemplateResultData = blockTemplateResult.getGetBlockTemplateResultData();

@@ -1,8 +1,7 @@
 package com.mempoolexplorer.bitcoind.adapter.threads;
 
-import java.util.concurrent.BlockingQueue;
-
 import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
+import com.mempoolexplorer.bitcoind.adapter.components.containers.MempoolSeqEventQueueContainer;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +20,8 @@ public abstract class ZMQSequenceEventProcessor implements Runnable {
     private Thread thread = null;
     protected boolean endThread;
 
-    protected BlockingQueue<MempoolSeqEvent> blockingQueue;
+    @Autowired
+    protected MempoolSeqEventQueueContainer blockingQueueContainer;
 
     @Autowired
     protected AlarmLogger alarmLogger;
@@ -31,9 +31,6 @@ public abstract class ZMQSequenceEventProcessor implements Runnable {
     public void start() {
         if (finished)
             throw new IllegalStateException("This class only accepts only one start");
-        if (blockingQueue == null) {
-            throw new IllegalStateException("blocking queue not defined.");
-        }
         thread = new Thread(this);
         thread.start();
         started = true;
@@ -60,10 +57,6 @@ public abstract class ZMQSequenceEventProcessor implements Runnable {
             Thread.currentThread().interrupt();// It doesn't care, just to avoid sonar complaining.
         }
 
-    }
-
-    public void setBlockingQueue(BlockingQueue<MempoolSeqEvent> blockingQueue) {
-        this.blockingQueue = blockingQueue;
     }
 
 }
