@@ -11,6 +11,7 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.springframework.web.client.ResourceAccessException;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -45,6 +46,9 @@ public class BlockTemplateRefresherJob implements Job {
             blockTemplateContainer.setNewestBlockTemplate(newBT);
             log.debug("New blockTemplate arrived from bitcoind");
 
+        } catch (ResourceAccessException e) {
+            log.error("Seems bitcoind is down {}", e.getMessage());
+            alarmLogger.addAlarm("Seems bitcoind is down." + e.getMessage());
         } catch (RuntimeException e) {
             alarmLogger.addAlarm("Exception: " + e.getMessage());
             log.error("Exception: ", e);

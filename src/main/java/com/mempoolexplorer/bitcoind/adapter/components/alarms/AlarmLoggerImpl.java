@@ -1,18 +1,18 @@
 package com.mempoolexplorer.bitcoind.adapter.components.alarms;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import com.mempoolexplorer.bitcoind.adapter.utils.SysProps;
 
-@Component
-public class AlarmLoggerImpl implements AlarmLogger {
+import org.springframework.stereotype.Component;
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+import lombok.extern.slf4j.Slf4j;
+
+@Component
+@Slf4j
+public class AlarmLoggerImpl implements AlarmLogger {
 
 	// Concurrent optimized for high number or transversals.
 	private List<String> alarmList = new CopyOnWriteArrayList<>();
@@ -24,7 +24,7 @@ public class AlarmLoggerImpl implements AlarmLogger {
 
 	@Override
 	public void addAlarm(String alarm) {
-		alarmList.add(alarm);
+		alarmList.add(Instant.now().toString() + " - " + alarm);
 	}
 
 	@Override
@@ -40,7 +40,9 @@ public class AlarmLoggerImpl implements AlarmLogger {
 				sb.append(SysProps.NL);
 			}
 			sb.append("--------------------------------------------------------------------------");
-			logger.warn(sb.toString());
+			if (log.isWarnEnabled()) {
+				log.warn(sb.toString());
+			}
 		}
 	}
 

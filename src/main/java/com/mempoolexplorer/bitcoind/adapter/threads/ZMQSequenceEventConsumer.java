@@ -11,7 +11,6 @@ import java.util.function.Supplier;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
-import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
@@ -75,14 +74,14 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
                 log.debug("This is the event: {}", event);
                 onEvent(event);
             }
-        } catch (TxPoolException e) {
+        } catch (Exception e) {
             // We cannot recover from this. fastFail
             log.error("", e);
             alarmLogger.addAlarm("Fatal error" + ExceptionUtils.getStackTrace(e));
         }
     }
 
-    private void onEvent(MempoolSeqEvent event) throws TxPoolException {
+    private void onEvent(MempoolSeqEvent event) throws InterruptedException {
         if (isStarting) {
             // ResetContainers or Queries full mempool with mempoolSequence number.
             onEventonStarting(event);
@@ -91,22 +90,33 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         treatEvent(event);
     }
 
-    private void onEventonStarting(MempoolSeqEvent event) throws TxPoolException {
+    private void onEventonStarting(MempoolSeqEvent event) throws InterruptedException {
         if (event.getZmqSequence() == 0) {
             log.info("Bitcoind is starting while we are already up");
-            resetContainers();// in case of bitcoind crash
+            // We don't need resetContainers in case of bitcoind crash, onErrorInZMQSequence
+            // has done it for us.
         } else {
             log.info("Bitcoind is already working, asking for full mempool and mempoolSequence...");
-            TxPool txPool = txPoolFiller.createMemPool();
+
+            TxPool txPool = null;
+            while (txPool == null) {
+                try {
+                    txPool = txPoolFiller.createMemPool();
+                } catch (Exception e) {
+                    log.warn("Bitcoind is not ready yet waiting 5 seconds...");
+                    alarmLogger.addAlarm("Bitcoind is not ready yet waiting 5 seconds...");
+                    Thread.sleep(5000);
+                }
+            }
             txPoolContainer.setTxPool(txPool);
-            sendAllMemPoolTxs();// This is an expensive operation, use with care.
             log.info("Full mempool has been queried.");
+            sendAllMemPoolTxs();// This is an expensive operation, use with care.
         }
         // Fake a lastZMQSequence because we are starting
         lastZMQSequence = event.getZmqSequence() - 1;
     }
 
-    private void treatEvent(MempoolSeqEvent event) throws TxPoolException {
+    private void treatEvent(MempoolSeqEvent event) throws InterruptedException {
 
         if (errorInZMQSequence(event)) {
             onErrorInZMQSequence(event);// Makes a full reset
@@ -126,7 +136,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
     }
 
-    private void onTx(MempoolSeqEvent event) throws TxPoolException {
+    private void onTx(MempoolSeqEvent event) {
         // Events can be discarded if currentMPS >= eventMPS
         if (discardEventAndLogIt(event)) {
             return;
@@ -180,7 +190,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         return false;
     }
 
-    private void fullReset() throws TxPoolException {
+    private void fullReset() {
         resetContainers();
         // Reset downstream counter to 0 to provoke cascade resets.
         txPoolFiller.resetChangeCounter();
@@ -188,11 +198,14 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         lastZMQSequence = -1;
     }
 
-    private void onErrorInZMQSequence(MempoolSeqEvent event) throws TxPoolException {
+    private void onErrorInZMQSequence(MempoolSeqEvent event) throws InterruptedException {
         // Somehow we have lost mempool events. We have to re-start again.
         log.error("We have lost a ZMQMessage, ZMQSequence not expected: {}, "
-                + "asking for new full mempool and mempoolSequence...", event.getZmqSequence());
+                + "Reset and waiting for new full mempool and mempoolSequence...", event.getZmqSequence());
         fullReset();
+        // Event is reintroduced and it's not lost never. This is a must when bitcoind
+        // re-starts and send a ZMQSequenceEvent = 0
+        onEvent(event);
     }
 
     private boolean errorInZMQSequence(MempoolSeqEvent event) {
@@ -213,6 +226,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
      * Sends all memPool transactions 10 by 10
      */
     private void sendAllMemPoolTxs() {
+        log.info("Sending full mempool downstream...");
         Map<String, Transaction> fullTxPool = txPoolContainer.getTxPool().getFullTxPool();
         TxPoolChanges txpc = new TxPoolChanges();
         // All change counter are set to 0, signaling to clients that they must forget
@@ -239,5 +253,6 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
             txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
             pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
         }
+        log.info("Full mempool has been sent downstream...");
     }
 }
