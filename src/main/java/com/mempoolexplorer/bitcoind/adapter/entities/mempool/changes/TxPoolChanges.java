@@ -1,6 +1,5 @@
 package com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,8 +16,6 @@ import lombok.ToString;
 @Setter
 @ToString
 public class TxPoolChanges {
-	private Instant changeTime;
-	private Integer changeCounter;
 	private List<Transaction> newTxs = new ArrayList<>();
 	private List<String> removedTxsId = new ArrayList<>();
 	private Map<String, TxAncestryChanges> txAncestryChangesMap = new HashMap<>(SysProps.EXPECTED_MAX_ANCESTRY_CHANGES);
@@ -30,5 +27,4 @@ public class TxPoolChanges {
 	public boolean hasChanges() {
 		return !hasNoChanges();
 	}
-
 }

@@ -1,6 +1,5 @@
 package com.mempoolexplorer.bitcoind.adapter.threads;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
@@ -63,7 +62,12 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     private TxSource txSource;
 
     private boolean isStarting = true;
+
+    // Incoming seqNumber
     private int lastZMQSequence = -1;
+
+    // Outcoming seqNumber
+    private int downStreamSeqNumber = -1;
 
     @Override
     protected void doYourThing() throws InterruptedException {
@@ -147,8 +151,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         // Update our mempool
         txPoolChanges.ifPresentOrElse(txPC -> txPool.apply(txPC, eventMPS), () -> txPool.apply(eventMPS));
         // Send to kafka.
-        txPoolChanges.ifPresent(txPC -> txSource
-                .publishMemPoolEvent(MempoolEvent.createFrom(txPC, blockTemplateContainer.getChanges())));
+        txPoolChanges.ifPresent(txPC -> txSource.publishMemPoolEvent(
+                MempoolEvent.createFrom(txPC, blockTemplateContainer.getChanges(), ++downStreamSeqNumber)));
         // Log update if any
         txPoolChanges.ifPresent(txPC -> {
             if (log.isDebugEnabled() && !txPC.getTxAncestryChangesMap().isEmpty())
@@ -174,9 +178,10 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
             log.debug(txPoolChanges.getTxAncestryChangesMap().toString());
 
         // First we send block to kafka.
-        txSource.publishMemPoolEvent(MempoolEvent.createFrom(block));
+        txSource.publishMemPoolEvent(MempoolEvent.createFrom(block, ++downStreamSeqNumber));
         // Then we send txPoolChanges of that block
-        txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPoolChanges, blockTemplateContainer.getChanges()));
+        txSource.publishMemPoolEvent(
+                MempoolEvent.createFrom(txPoolChanges, blockTemplateContainer.getChanges(), ++downStreamSeqNumber));
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {
@@ -192,8 +197,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private void fullReset() {
         resetContainers();
-        // Reset downstream counter to 0 to provoke cascade resets.
-        txPoolFiller.resetChangeCounter();
+        // Reset downstream counter to provoke cascade resets.
+        downStreamSeqNumber = -1;
         isStarting = true;
         lastZMQSequence = -1;
     }
@@ -231,8 +236,6 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         TxPoolChanges txpc = new TxPoolChanges();
         // All change counter are set to 0, signaling to clients that they must forget
         // previous mempool and refresh
-        txpc.setChangeCounter(0);
-        txpc.setChangeTime(Instant.now());
 
         PercentLog pl = new PercentLog(fullTxPool.size());
         int counter = 0;
@@ -241,7 +244,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
             Entry<String, Transaction> entry = it.next();
 
             if (txpc.getNewTxs().size() == 10) {
-                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
+                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty(), ++downStreamSeqNumber));
                 txpc.setNewTxs(new ArrayList<>(10));
                 pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
             }
@@ -250,7 +253,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
 
         if (!txpc.getNewTxs().isEmpty()) {
-            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty()));
+            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty(), ++downStreamSeqNumber));
             pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
         }
         log.info("Full mempool has been sent downstream...");

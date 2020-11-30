@@ -1,7 +1,5 @@
 package com.mempoolexplorer.bitcoind.adapter.components.factories;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -69,12 +67,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
     private AlarmLogger alarmLogger;
 
     @Autowired
-    private Clock clock;
-
-    @Autowired
     private BlockFactory blockFactory;
-
-    private AtomicInteger changeCounter = new AtomicInteger(0);
 
     @Override
     @ProfileTime(metricName = ProfileMetricNames.MEMPOOL_INITIAL_CREATION_TIME)
@@ -273,9 +266,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         if (null == txAdd) {
             return Optional.empty();
         }
-        txpc.setChangeTime(Instant.now(clock));
-        // Increment only when we don't return an empty optional
-        txpc.setChangeCounter(changeCounter.addAndGet(1));
         txpc.getNewTxs().add(txAdd);
         // obtain transaction DAG (see below). This is the set of tx that we must update
         // its ancestry.
@@ -290,9 +280,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         if (txDel == null) {
             return Optional.empty();// Already deleted, I think it's not possible, but I don't care
         }
-        txpc.setChangeTime(Instant.now(clock));
-        // Increment only when we don't return an empty optional
-        txpc.setChangeCounter(changeCounter.addAndGet(1));
         txpc.getRemovedTxsId().add(txIdDel);
         // obtain transaction DAG (see below). This is the set of tx that we must update
         // its ancestry.
@@ -309,9 +296,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             log.error("Bitcoind can't find block: {}", blockHash);
             return Optional.empty();
         }
-        txpc.setChangeTime(Instant.now(clock));
-        // Increment only when we don't return an empty optional
-        txpc.setChangeCounter(changeCounter.addAndGet(1));
         Set<String> blockDAGsSet = new HashSet<>();
         List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
         // Obtain all tx that changes its ancestry
@@ -337,9 +321,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
             log.error("Bitcoind can't find block: {}", blockHash);
             return Optional.empty();
         }
-        txpc.setChangeTime(Instant.now(clock));
-        // Increment only when we don't return an empty optional
-        txpc.setChangeCounter(changeCounter.addAndGet(1));
         Set<String> blockDAGsSet = new HashSet<>();
         List<String> blockTxsList = blockResult.getGetBlockResultData().getTx();
         // Obtain all tx that changes its ancestry
@@ -527,11 +508,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
                 || (!txa.getSpentby().equals(rawMemPoolEntryData.getSpentby()))
                 || (!txf.getAncestor().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getAncestor())))
                 || (!txf.getDescendant().equals(JSONUtils.jsonToAmount(rawMemPoolEntryData.getFees().getDescendant())));
-    }
-
-    @Override
-    public void resetChangeCounter() {
-        this.changeCounter.set(0);
     }
 
 }
