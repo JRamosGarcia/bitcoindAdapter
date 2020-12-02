@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-
 @Getter
 @Setter
 @ToString
@@ -15,5 +14,6 @@ import lombok.ToString;
 public class GetBlockTemplateResultData {
 
 	private List<GetBlockTemplateTransaction> transactions;
+	int height;
 
 }

@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
@@ -16,6 +17,7 @@ import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.changes.TxPoolChanges;
 import com.mempoolexplorer.bitcoind.adapter.events.MempoolEvent;
 import com.mempoolexplorer.bitcoind.adapter.events.sources.TxSource;
+import com.mempoolexplorer.bitcoind.adapter.jobs.BlockTemplateRefresherJob;
 import com.mempoolexplorer.bitcoind.adapter.utils.PercentLog;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -55,6 +57,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     private TxPoolContainer txPoolContainer;
     @Autowired
     private BlockTemplateContainer blockTemplateContainer;
+    @Autowired
+    private BitcoindClient bitcoindClient;
 
     @Autowired
     private TxPoolFiller txPoolFiller;
@@ -151,8 +155,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         // Update our mempool
         txPoolChanges.ifPresentOrElse(txPC -> txPool.apply(txPC, eventMPS), () -> txPool.apply(eventMPS));
         // Send to kafka.
-        txPoolChanges.ifPresent(txPC -> txSource.publishMemPoolEvent(
-                MempoolEvent.createFrom(txPC, blockTemplateContainer.getChanges(), ++downStreamSeqNumber)));
+        txPoolChanges
+                .ifPresent(txPC -> txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPC, ++downStreamSeqNumber)));
         // Log update if any
         txPoolChanges.ifPresent(txPC -> {
             if (log.isDebugEnabled() && !txPC.getTxAncestryChangesMap().isEmpty())
@@ -161,11 +165,15 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     }
 
     private void onBlock(MempoolSeqEvent event) {
+        // Since a new block has arrived, we want to force as soon as possible a
+        // blockTemplate refresh
+        forceRefreshBlockTemplate();
+
         // No mempoolSequence for block events
         Optional<Pair<TxPoolChanges, Block>> opPair = txPoolFiller.obtainOnBlockMemPoolChanges(event);
         TxPool txPool = txPoolContainer.getTxPool();
         if (opPair.isEmpty()) {
-            return;// Error logging on txPoolFiller.
+            return;// Error. Logging on txPoolFiller.
         }
 
         TxPoolChanges txPoolChanges = opPair.get().getLeft();
@@ -177,11 +185,25 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         if (log.isDebugEnabled() && !txPoolChanges.getTxAncestryChangesMap().isEmpty())
             log.debug(txPoolChanges.getTxAncestryChangesMap().toString());
 
-        // First we send block to kafka.
-        txSource.publishMemPoolEvent(MempoolEvent.createFrom(block, ++downStreamSeqNumber));
-        // Then we send txPoolChanges of that block
-        txSource.publishMemPoolEvent(
-                MempoolEvent.createFrom(txPoolChanges, blockTemplateContainer.getChanges(), ++downStreamSeqNumber));
+        // We send block to kafka with the related changes in mempool, and also
+        // blockTemplate changes, note that blockTemplate is Optional because we can
+        // have not a blocktemplate due to: two consecutive blocks or block
+        // disconnection.
+        txSource.publishMemPoolEvent(MempoolEvent.createFrom(block, txPoolChanges,
+                blockTemplateContainer.pull(block.getHeight()), ++downStreamSeqNumber));
+    }
+
+    private void forceRefreshBlockTemplate() {
+        try {
+            BlockTemplateRefresherJob job = new BlockTemplateRefresherJob();
+            job.setAlarmLogger(alarmLogger);
+            job.setBitcoindClient(bitcoindClient);
+            job.setBlockTemplateContainer(blockTemplateContainer);
+            job.execute(null);
+        } catch (Exception e) {
+            log.error("Error while forcing a blockTemplate refresh: ", e);
+            alarmLogger.addAlarm("Error while forcing a blockTemplate refresh: " + e.getMessage());
+        }
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {
@@ -244,7 +266,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
             Entry<String, Transaction> entry = it.next();
 
             if (txpc.getNewTxs().size() == 10) {
-                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty(), ++downStreamSeqNumber));
+                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber));
                 txpc.setNewTxs(new ArrayList<>(10));
                 pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
             }
@@ -253,7 +275,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
 
         if (!txpc.getNewTxs().isEmpty()) {
-            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, Optional.empty(), ++downStreamSeqNumber));
+            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber));
             pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
         }
         log.info("Full mempool has been sent downstream...");

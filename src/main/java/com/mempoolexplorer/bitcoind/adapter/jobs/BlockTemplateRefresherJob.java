@@ -14,6 +14,7 @@ import org.quartz.JobExecutionException;
 import org.springframework.web.client.ResourceAccessException;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Getter
 @Setter
+@NoArgsConstructor
 @DisallowConcurrentExecution
 @Slf4j
 public class BlockTemplateRefresherJob implements Job {
@@ -33,6 +35,7 @@ public class BlockTemplateRefresherJob implements Job {
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         try {
+            // This loop is for be sure that
             GetBlockTemplateResult blockTemplateResult = bitcoindClient.getBlockTemplateResult();
             if (blockTemplateResult.getError() != null) {
                 alarmLogger.addAlarm("Can't get block template result. Maybe bitcoind is down? Error: "
@@ -43,7 +46,7 @@ public class BlockTemplateRefresherJob implements Job {
             }
             GetBlockTemplateResultData getBlockTemplateResultData = blockTemplateResult.getGetBlockTemplateResultData();
             BlockTemplate newBT = new BlockTemplate(getBlockTemplateResultData);
-            blockTemplateContainer.setNewestBlockTemplate(newBT);
+            blockTemplateContainer.push(newBT);
             log.debug("New blockTemplate arrived from bitcoind");
 
         } catch (ResourceAccessException e) {

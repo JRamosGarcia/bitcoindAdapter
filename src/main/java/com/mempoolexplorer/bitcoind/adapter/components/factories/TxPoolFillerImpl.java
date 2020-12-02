@@ -306,7 +306,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         addPoolChangesFromAncestry(txpc, blockDAGsSet);
         // Create block from bitcoind result (and timestamp associated)
         Block block = blockFactory.from(blockResult.getGetBlockResultData(), Block.CONNECTED_BLOCK);
-        addNotInMemPoolTxsOf(block);
+        addNotInMemPoolTxs(block, blockTxsList);
         return Optional.of(Pair.of(txpc, block));
     }
 
@@ -317,7 +317,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         TxPoolChanges txpc = new TxPoolChanges();
         GetBlockResult blockResult = bitcoindClient.getBlock(blockHash);
         if (null != blockResult.getError()) {
-            alarmLogger.addAlarm("Bitcoind Cannot find block: " + blockHash);
+            alarmLogger.addAlarm("Bitcoind cannot find block: " + blockHash);
             log.error("Bitcoind can't find block: {}", blockHash);
             return Optional.empty();
         }
@@ -331,18 +331,18 @@ public class TxPoolFillerImpl implements TxPoolFiller {
         addPoolChangesFromAncestry(txpc, blockDAGsSet);
         // Create block from bitcoind result (and timestamp associated)
         Block block = blockFactory.from(blockResult.getGetBlockResultData(), Block.DISCONNECTED_BLOCK);
-        addNotInMemPoolTxsOf(block);// Not sure if useful
+        addNotInMemPoolTxs(block, blockTxsList);// Not sure if useful
         return Optional.of(Pair.of(txpc, block));
     }
 
     // After finding a new block, it (normally) could be the case that we don't have
     // all of the transactions. (i.e. coinbase or transactions not relayed to us).
     // We need some of that transactions data for statistics
-    private void addNotInMemPoolTxsOf(Block block) {
+    private void addNotInMemPoolTxs(Block block, List<String> blockTxsList) {
 
         // First we obtain the list of transactions in the block which are not in the
         // memPool
-        List<String> notInMemPoolTxIds = block.getTxIds().stream()
+        List<String> notInMemPoolTxIds = blockTxsList.stream()
                 .filter(txId -> null == txPoolContainer.getTxPool().getTx(txId)).collect(Collectors.toList());
 
         // Then we construct NotInMemPoolTx or coinbase data and add it to the block
@@ -386,8 +386,10 @@ public class TxPoolFillerImpl implements TxPoolFiller {
     private void addPoolChangesFromNewTxs(TxPoolChanges txpc, List<String> blockTxsList) {
         for (String txIdInBlock : blockTxsList) {
             Transaction txInBlock = loadTransaction(txIdInBlock);
-            if (txIdInBlock == null) {
+            // This can't happen
+            if (txInBlock == null) {
                 log.error("TxId {} in disconnected block, not found", txIdInBlock);
+                alarmLogger.addAlarm("TxId " + txIdInBlock + " in disconnected block, not found");
                 continue;
             }
             txpc.getNewTxs().add(txInBlock);

@@ -25,7 +25,6 @@ public class BlockFactoryImpl implements BlockFactory {
 		block.setWeight(blockResultData.getWeight());
 		block.setMinedTime(Instant.ofEpochSecond(blockResultData.getTime()));
 		block.setMedianMinedTime(Instant.ofEpochSecond(blockResultData.getMediantime()));
-		block.setTxIds(blockResultData.getTx());
 
 		return block;
 	}

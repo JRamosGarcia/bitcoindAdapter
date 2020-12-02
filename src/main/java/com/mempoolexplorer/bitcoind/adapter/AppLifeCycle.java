@@ -154,5 +154,4 @@ public class AppLifeCycle {
         scheduler.scheduleJob(job, trigger);
         scheduler.start();
     }
-
 }

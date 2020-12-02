@@ -1,24 +1,21 @@
 package com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplate;
-import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplateChanges;
 
 /**
- * Stores newest and last-used BlockTemplate. Also tracks if there are changes
- * between newest and last-used
- * 
+ * Stores BlockTemplates for different block Height.
  */
 public interface BlockTemplateContainer {
 
-	BlockTemplate getNewestBlockTemplate();
+	// insert or replace blockTemplate for a block height
+	void push(BlockTemplate blockTemplate);
 
-	void setNewestBlockTemplate(BlockTemplate blockTemplate);
+	// Returns BlockTemplate for height if any and remove it from map.
+	Optional<BlockTemplate> pull(int height);
 
-	/**
-	 * If optional is not empty, changes *MUST BE SENT*
-	 * @return
-	 */
-	Optional<BlockTemplateChanges> getChanges();
+	// Returns all blockTemplates without removing any.
+	List<BlockTemplate> peekBlockTemplates();
 }
