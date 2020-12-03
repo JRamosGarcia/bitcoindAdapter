@@ -48,6 +48,7 @@
 	</springProfile>
 
 	<logger name="com.mempoolexplorer.bitcoind.adapter.threads.ZMQSequenceEventConsumer" level="DEBUG" />
+	<logger name="com.mempoolexplorer.bitcoind.adapter.jobs.BlockTemplateRefresherJob" level="DEBUG" />
 
 
 </configuration>

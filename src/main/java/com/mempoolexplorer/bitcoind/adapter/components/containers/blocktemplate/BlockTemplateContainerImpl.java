@@ -29,4 +29,9 @@ public class BlockTemplateContainerImpl implements BlockTemplateContainer {
 	public List<BlockTemplate> peekBlockTemplates() {
 		return btMap.values().stream().collect(Collectors.toList());
 	}
+
+	@Override
+	public void drop(){
+		btMap = new ConcurrentHashMap<>();
+	}
 }

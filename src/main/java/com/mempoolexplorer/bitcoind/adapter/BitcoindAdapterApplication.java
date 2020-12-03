@@ -6,8 +6,6 @@ import java.time.Clock;
 import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClientResponseErrorHandler;
 import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindProperties;
 
-import org.quartz.SchedulerFactory;
-import org.quartz.impl.StdSchedulerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -45,11 +43,6 @@ public class BitcoindAdapterApplication {
 				.rootUri(UriComponentsBuilder.newInstance().scheme("http").host(bitcoindProperties.getHost())
 						.port(Integer.valueOf(bitcoindProperties.getRpcPort())).toUriString())
 				.errorHandler(new BitcoindClientResponseErrorHandler()).build();
-	}
-
-	@Bean
-	public SchedulerFactory getSchedulerFactory() {
-		return new StdSchedulerFactory();
 	}
 
 	@Bean

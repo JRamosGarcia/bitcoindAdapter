@@ -7,7 +7,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
@@ -58,8 +57,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     @Autowired
     private BlockTemplateContainer blockTemplateContainer;
     @Autowired
-    private BitcoindClient bitcoindClient;
-
+    private BlockTemplateRefresherJob blockTemplateRefresherJob;
     @Autowired
     private TxPoolFiller txPoolFiller;
     @Autowired
@@ -89,13 +87,34 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
     }
 
+
+
     private void onEvent(MempoolSeqEvent event) throws InterruptedException {
+        // Checks if BlockTemplateRefresherJob must start. (only when all tx has been
+        // loaded)
+        checkForBTRefresherStart(event);
         if (isStarting) {
             // ResetContainers or Queries full mempool with mempoolSequence number.
             onEventonStarting(event);
             isStarting = false;
         }
         treatEvent(event);
+    }
+
+    private void checkForBTRefresherStart(MempoolSeqEvent event) throws InterruptedException {
+        if (isStarting && event.getZmqSequence() == 0) {
+            // This means bitcoind is starting while we are already up. Better stop for 1
+            // second to let ZMQEventQueue to fill. And then ask for its size==0 to start Job.
+            Thread.sleep(1000);
+            return;
+        }
+        //if no pending Txs or blocks, then we can start job.
+        if(blockingQueueContainer.getBlockingQueue().isEmpty() && (!blockTemplateRefresherJob.isStarted())){
+            blockTemplateRefresherJob.setStarted(true);
+            log.info("BlockTemplateRefresherJob started");
+            //Execute ASAP. does not matter if scheduller also invokes it. It's thread safe.
+            blockTemplateRefresherJob.execute();
+        }
     }
 
     private void onEventonStarting(MempoolSeqEvent event) throws InterruptedException {
@@ -194,16 +213,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     }
 
     private void forceRefreshBlockTemplate() {
-        try {
-            BlockTemplateRefresherJob job = new BlockTemplateRefresherJob();
-            job.setAlarmLogger(alarmLogger);
-            job.setBitcoindClient(bitcoindClient);
-            job.setBlockTemplateContainer(blockTemplateContainer);
-            job.execute(null);
-        } catch (Exception e) {
-            log.error("Error while forcing a blockTemplate refresh: ", e);
-            alarmLogger.addAlarm("Error while forcing a blockTemplate refresh: " + e.getMessage());
-        }
+        blockTemplateRefresherJob.execute();
     }
 
     private boolean discardEventAndLogIt(MempoolSeqEvent event) {
@@ -218,6 +228,9 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     }
 
     private void fullReset() {
+        // We stops blockTemplateRefresherJob
+        blockTemplateRefresherJob.setStarted(false);
+        log.info("BlockTemplateRefresherJob stopped");
         resetContainers();
         // Reset downstream counter to provoke cascade resets.
         downStreamSeqNumber = -1;
@@ -246,7 +259,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private void resetContainers() {
         txPoolContainer.getTxPool().drop();
-        // BlockTemplateContainer no needs to reset
+        blockTemplateContainer.drop();
     }
 
     /**

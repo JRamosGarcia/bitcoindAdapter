@@ -7,33 +7,39 @@ import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplate;
 
-import org.quartz.DisallowConcurrentExecution;
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * This job only updates blockTemplateContainer with new TemplateBlocks
  */
-@Getter
-@Setter
-@NoArgsConstructor
-@DisallowConcurrentExecution
 @Slf4j
-public class BlockTemplateRefresherJob implements Job {
+@Setter
+@Getter
+@Component
+public class BlockTemplateRefresherJob {
 
+    @Autowired
     private BitcoindClient bitcoindClient;
+    @Autowired
     private BlockTemplateContainer blockTemplateContainer;
+    @Autowired
     private AlarmLogger alarmLogger;
 
-    @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
+    private boolean started = false;
+
+    @Scheduled(fixedDelayString = "${bitcoindadapter.refreshBTIntervalMilliSec}")
+    public void execute() {
+        // This avoids unwanted starts before complete initialization or restart.
+        if (!started)
+            return;
+
         try {
             // This loop is for be sure that
             GetBlockTemplateResult blockTemplateResult = bitcoindClient.getBlockTemplateResult();
@@ -52,7 +58,7 @@ public class BlockTemplateRefresherJob implements Job {
         } catch (ResourceAccessException e) {
             log.error("Seems bitcoind is down {}", e.getMessage());
             alarmLogger.addAlarm("Seems bitcoind is down." + e.getMessage());
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             alarmLogger.addAlarm("Exception: " + e.getMessage());
             log.error("Exception: ", e);
         }

@@ -9,7 +9,6 @@ import com.mempoolexplorer.bitcoind.adapter.entities.blocktemplate.BlockTemplate
  * Stores BlockTemplates for different block Height.
  */
 public interface BlockTemplateContainer {
-
 	// insert or replace blockTemplate for a block height
 	void push(BlockTemplate blockTemplate);
 
@@ -18,4 +17,7 @@ public interface BlockTemplateContainer {
 
 	// Returns all blockTemplates without removing any.
 	List<BlockTemplate> peekBlockTemplates();
+
+	// Delete all data from container
+	void drop();
 }

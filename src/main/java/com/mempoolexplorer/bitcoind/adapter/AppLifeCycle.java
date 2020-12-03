@@ -1,22 +1,9 @@
 package com.mempoolexplorer.bitcoind.adapter;
 
-import com.mempoolexplorer.bitcoind.adapter.components.alarms.AlarmLogger;
-import com.mempoolexplorer.bitcoind.adapter.components.clients.BitcoindClient;
-import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.exceptions.TxPoolException;
-import com.mempoolexplorer.bitcoind.adapter.jobs.BlockTemplateRefresherJob;
-import com.mempoolexplorer.bitcoind.adapter.properties.BitcoindAdapterProperties;
 import com.mempoolexplorer.bitcoind.adapter.threads.ZMQSequenceEventConsumer;
 import com.mempoolexplorer.bitcoind.adapter.threads.ZMQSequenceEventReceiver;
 
-import org.quartz.JobBuilder;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleScheduleBuilder;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -58,23 +45,8 @@ public class AppLifeCycle {
     @Autowired
     private ZMQSequenceEventConsumer zmqSequenceEventConsumer;
 
-    @Autowired
-    private Scheduler scheduler;
-
-    @Autowired
-    private BitcoindAdapterProperties bitcoindAdapterProperties;
-
-    @Autowired
-    private BitcoindClient bitcoindClient;
-
-    @Autowired
-    private BlockTemplateContainer blockTemplateContainer;
-
-    @Autowired
-    private AlarmLogger alarmLogger;
-
     @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReadyEvent(ApplicationReadyEvent event) throws SchedulerException, TxPoolException {
+    public void onApplicationReadyEvent(ApplicationReadyEvent event) throws TxPoolException {
         onApplicationReadyEvent = true;
         checkInitialization();
     }
@@ -82,7 +54,7 @@ public class AppLifeCycle {
     // Sent when kafka binding is done. Wait for it since we don't want to send
     // things before kafka initialization.
     @EventListener(BindingCreatedEvent.class)
-    public void onBindingCreatedEvent(BindingCreatedEvent event) throws SchedulerException, TxPoolException {
+    public void onBindingCreatedEvent(BindingCreatedEvent event) throws TxPoolException {
         @SuppressWarnings("unchecked") // Since we are receving this event we know it's type
         Binding<Object> binding = (Binding<Object>) event.getSource();
         // Checks that event.source is the same as our kafka topic
@@ -107,51 +79,23 @@ public class AppLifeCycle {
 
     private void schedulerShutdown() {
         log.info("Shuting down bitcoindAdapter scheduler...");
-        try {
-            scheduler.shutdown();
-        } catch (SchedulerException e) {
-            log.error("Error shutting down scheduller, exception: ", e);
-        }
         log.info("BitcoindAdapter scheduler shutdown complete.");
     }
 
-    public void checkInitialization() throws SchedulerException, TxPoolException {
+    public void checkInitialization() throws TxPoolException {
         if (onApplicationReadyEvent && onBindingCreatedEvent && !hasInitializated) {
             hasInitializated = true;
             initialization();
         }
     }
 
-    private void initialization() throws SchedulerException {
+    private void initialization() {
         log.info("bitcoinAdapter ZMQ receiver and consumer are starting...");
         // We keep the blockingQueue private among producer and consumer.
         // No size limit. Should be enough fast to not get "full"
         zmqSequenceEventConsumer.start();
         zmqSequenceEventReceiver.start();
         log.info("BitcoinAdapter ZMQ receiver and consumer started.");
-        startBlockTemplateRefresherJob();
-        log.info("BlockTemplateRefresherJob started.");
     }
 
-    // In case of SchedulerException we cannot recover so we don't get it
-    private void startBlockTemplateRefresherJob() throws SchedulerException {
-        // We are screwing in DB-jobs because Quartz Jobs serialize JobDataMap. But we
-        // are not using that feature.
-        JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put("bitcoindClient", bitcoindClient);
-        jobDataMap.put("blockTemplateContainer", blockTemplateContainer);
-        jobDataMap.put("alarmLogger", alarmLogger);
-
-        JobDetail job = JobBuilder.newJob(BlockTemplateRefresherJob.class)
-                .withIdentity("blockTemplateRefresherJob", "blockTemplate").setJobData(jobDataMap).build();
-        Trigger trigger = TriggerBuilder.newTrigger().withIdentity("blockTemplateRefreshTrigger", "blockTemplate")
-                .startNow()
-                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(bitcoindAdapterProperties.getRefreshIntervalSec())
-                        .withMisfireHandlingInstructionNowWithRemainingCount().repeatForever())
-                .build();
-
-        scheduler.scheduleJob(job, trigger);
-        scheduler.start();
-    }
 }

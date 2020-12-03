@@ -79,8 +79,6 @@ public class TxPoolFillerImpl implements TxPoolFiller {
                 throw new TxPoolException("Error, rawMemPoolNonVerbose returned error: " + memPoolInfo.getError()
                         + ", requestId: " + memPoolInfo.getId());
             }
-            log.info("Bitcoind node has {} tx in his mempoool, loading...",
-                    memPoolInfo.getGetMemPoolInfoData().getSize());
             GetRawMemPoolNonVerbose rawMemPoolNonVerbose = bitcoindClient.getRawMemPoolNonVerbose();
 
             if (null != rawMemPoolNonVerbose.getError()) {
@@ -93,7 +91,7 @@ public class TxPoolFillerImpl implements TxPoolFiller {
                     .getGetRawMemPoolNonVerboseData();
             int mempoolSequence = getRawMemPoolNonVerboseData.getMempoolSequence();
 
-            log.info("bitcoindClient.getRawMemPoolNonVerbose() returned a mempool with {} Txs and mempoolSequence: {}",
+            log.info("Bitcoind node has a mempool with {} Txs and mempoolSequence: {}. Loading transactions...",
                     getRawMemPoolNonVerboseData.getTrxHashList().size(), mempoolSequence);
 
             ConcurrentHashMap<String, Transaction> txIdToTxMap = createTxIdToTxMapFrom(

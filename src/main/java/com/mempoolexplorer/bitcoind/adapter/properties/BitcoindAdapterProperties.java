@@ -11,10 +11,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class BitcoindAdapterProperties {
-
-	private int refreshIntervalSec = 5;
-	private int memPoolChangesSize = 10;
-	private int newBlockListSize = 3;
-	private boolean sendAllTxOnStart = true;
-
+    private int refreshBTIntervalMilliSec = 5;
 }

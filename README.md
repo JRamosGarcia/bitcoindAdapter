@@ -64,20 +64,8 @@ dbcache=4000
 
 .properties file are loaded by configurationServer service. These properties are almost auto-explicative:
 
-* `refreshIntervalSec: "5"`
-Interval of mempool refreshing. (a new getrawMempool, getRawTransaction, getBlockCount and getBlockTemplate is made). 
-Only one thread is used for refreshing, if it takes more time than this interval, no other thread will be launch. 
-(to avoid overload and concurrency problems)
-
-* `bitcoindadapter.memPoolChangesSize=10`
-REST API `/memPool/changes` returns last 10 changes in memPool.
-
-* `bitcoindadapter.newBlockListSize=3`
-REST API `/lastBlocks` return last 3 blocks
-
-* `sendAllTxOnStart: true`
-When the full mempool is first obtained, it's sent as a series of kafka messages. 
-
+* `refreshBTIntervalMilliSec: "5000"`
+Interval in which bitcoindAdapter queries for new BlockTemplate. We does not use "longpoolid" since it does not refresh enough quickly.
 
 ## REST API
 * `/blockChain/lastBlocks` Returns a list with all last blocks recevived (normally last 3)
