@@ -163,10 +163,9 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     }
 
     private void onTx(MempoolSeqEvent event) {
-        // Events can be discarded if currentMPS >= eventMPS
-        if (discardEventAndLogIt(event)) {
-            return;
-        }
+        // Note: events could be discarded if currentMPS >= eventMPS (after loading a
+        // full mempool). but we have found it causes tx loss. why?. don't know but we
+        // will not discard any event.
         Optional<TxPoolChanges> txPoolChanges = txPoolFiller.obtainOnTxMemPoolChanges(event);
         int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
         TxPool txPool = txPoolContainer.getTxPool();
@@ -213,17 +212,6 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
 
     private void forceRefreshBlockTemplate() {
         blockTemplateRefresherJob.execute();
-    }
-
-    private boolean discardEventAndLogIt(MempoolSeqEvent event) {
-        int currentMPS = txPoolContainer.getTxPool().getMempoolSequence();
-        int eventMPS = event.getMempoolSequence().orElseThrow(onNoSeqNumberExceptionSupplier(event));
-        // Events can be discarded if currentMPS >= eventMPS
-        if (currentMPS >= eventMPS) {
-            log.info("Event discarded, current mempool sequence: {}, event: {}", currentMPS, eventMPS);
-            return true;
-        }
-        return false;
     }
 
     private void fullReset() {
