@@ -87,12 +87,10 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
     }
 
-
-
     private void onEvent(MempoolSeqEvent event) throws InterruptedException {
         // Checks if BlockTemplateRefresherJob must start. (only when all tx has been
         // loaded)
-        checkForBTRefresherStart(event);
+        checkForBTRefresherStart();
         if (isStarting) {
             // ResetContainers or Queries full mempool with mempoolSequence number.
             onEventonStarting(event);
@@ -101,18 +99,19 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         treatEvent(event);
     }
 
-    private void checkForBTRefresherStart(MempoolSeqEvent event) throws InterruptedException {
-        if (isStarting && event.getZmqSequence() == 0) {
-            // This means bitcoind is starting while we are already up. Better stop for 1
-            // second to let ZMQEventQueue to fill. And then ask for its size==0 to start Job.
+    private void checkForBTRefresherStart() throws InterruptedException {
+        if (isStarting) {
+            // When starting better stop for 1 second to let ZMQEventQueue to fill. And then
+            // ask for its size==0 to start Job.
             Thread.sleep(1000);
             return;
         }
-        //if no pending Txs or blocks, then we can start job.
-        if(blockingQueueContainer.getBlockingQueue().isEmpty() && (!blockTemplateRefresherJob.isStarted())){
+        // if no pending Txs or blocks, then we can start job.
+        if (blockingQueueContainer.getBlockingQueue().isEmpty() && (!blockTemplateRefresherJob.isStarted())) {
             blockTemplateRefresherJob.setStarted(true);
             log.info("BlockTemplateRefresherJob started");
-            //Execute ASAP. does not matter if scheduller also invokes it. It's thread safe.
+            // Execute ASAP. does not matter if scheduller also invokes it. It's thread
+            // safe.
             blockTemplateRefresherJob.execute();
         }
     }
