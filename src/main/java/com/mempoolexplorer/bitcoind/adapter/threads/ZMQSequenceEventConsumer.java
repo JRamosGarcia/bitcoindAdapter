@@ -172,8 +172,8 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         // Update our mempool
         txPoolChanges.ifPresentOrElse(txPC -> txPool.apply(txPC, eventMPS), () -> txPool.apply(eventMPS));
         // Send to kafka.
-        txPoolChanges
-                .ifPresent(txPC -> txSource.publishMemPoolEvent(MempoolEvent.createFrom(txPC, ++downStreamSeqNumber)));
+        txPoolChanges.ifPresent(txPC -> txSource
+                .publishMemPoolEvent(MempoolEvent.createFrom(txPC, ++downStreamSeqNumber, txPool.getSize())));
         // Log update if any
         txPoolChanges.ifPresent(txPC -> {
             if (log.isDebugEnabled() && !txPC.getTxAncestryChangesMap().isEmpty())
@@ -207,7 +207,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         // have not a blocktemplate due to: two consecutive blocks or block
         // disconnection.
         txSource.publishMemPoolEvent(MempoolEvent.createFrom(block, txPoolChanges,
-                blockTemplateContainer.pull(block.getHeight()), ++downStreamSeqNumber));
+                blockTemplateContainer.pull(block.getHeight()), ++downStreamSeqNumber, txPool.getSize()));
     }
 
     private void forceRefreshBlockTemplate() {
@@ -266,7 +266,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
             Entry<String, Transaction> entry = it.next();
 
             if (txpc.getNewTxs().size() == 10) {
-                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber));
+                txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber, -1));
                 txpc.setNewTxs(new ArrayList<>(10));
                 pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
             }
@@ -275,7 +275,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
 
         if (!txpc.getNewTxs().isEmpty()) {
-            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber));
+            txSource.publishMemPoolEvent(MempoolEvent.createFrom(txpc, ++downStreamSeqNumber, -1));
             pl.update(counter, percent -> log.info("Sending full txMemPool: {}", percent));
         }
         log.info("Full mempool has been sent downstream...");

@@ -41,7 +41,6 @@ public class BlockTemplateRefresherJob {
             return;
 
         try {
-            // This loop is for be sure that
             GetBlockTemplateResult blockTemplateResult = bitcoindClient.getBlockTemplateResult();
             if (blockTemplateResult.getError() != null) {
                 alarmLogger.addAlarm("Can't get block template result. Maybe bitcoind is down? Error: "
