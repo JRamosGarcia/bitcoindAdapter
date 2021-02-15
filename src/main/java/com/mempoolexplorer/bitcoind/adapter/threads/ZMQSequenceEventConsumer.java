@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.blocktemplate.BlockTemplateContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.containers.txpool.TxPoolContainer;
 import com.mempoolexplorer.bitcoind.adapter.components.factories.TxPoolFiller;
+import com.mempoolexplorer.bitcoind.adapter.components.health.MempoolSyncedHealthIndicator;
 import com.mempoolexplorer.bitcoind.adapter.entities.Transaction;
 import com.mempoolexplorer.bitcoind.adapter.entities.blockchain.changes.Block;
 import com.mempoolexplorer.bitcoind.adapter.entities.mempool.TxPool;
@@ -62,6 +63,9 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
     private TxPoolFiller txPoolFiller;
     @Autowired
     private TxSource txSource;
+    @Autowired
+    private MempoolSyncedHealthIndicator mempoolSyncedHealthIndicator;
+
 
     private boolean isStarting = true;
 
@@ -140,6 +144,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         }
         // Fake a lastZMQSequence because we are starting
         lastZMQSequence = event.getZmqSequence() - 1;
+        mempoolSyncedHealthIndicator.setMempoolSynced(true);
     }
 
     private void treatEvent(MempoolSeqEvent event) throws InterruptedException {
@@ -223,6 +228,7 @@ public class ZMQSequenceEventConsumer extends ZMQSequenceEventProcessor {
         downStreamSeqNumber = -1;
         isStarting = true;
         lastZMQSequence = -1;
+        mempoolSyncedHealthIndicator.setMempoolSynced(false);
     }
 
     private void onErrorInZMQSequence(MempoolSeqEvent event) throws InterruptedException {
